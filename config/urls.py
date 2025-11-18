@@ -23,7 +23,8 @@ urlpatterns = [
     path("users/", include("sdm_platform.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
-    # ...
+    path("chat/", include("sdm_platform.llmchat.urls")),
+    path("documents/", include("sdm_platform.evidence.urls", namespace="evidence")),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]

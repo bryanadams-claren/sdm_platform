@@ -8,10 +8,11 @@ from .base import env
 # https://docs.djangoproject.com/en/dev/ref/settings/#debug
 DEBUG = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
-SECRET_KEY = env(
+SECRET_KEY = env.str(
     "DJANGO_SECRET_KEY",
-    default="AvhkYQ5COKktWriOVVqTQWzG0o6ozgltXUpgf7sfXHThZp1BJidWpbq1ATA3GeY4",
+    default="AvhkYQ5COKktWriOVVqTQWzG0o6ozgltXUpgf7sfXHThZp1BJidWpbq1ATA3GeY4",  # type: ignore[call-overload]
 )
+
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]  # noqa: S104
 
@@ -28,9 +29,9 @@ CACHES = {
 # EMAIL
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#email-backend
-EMAIL_BACKEND = env(
+EMAIL_BACKEND = env.str(
     "DJANGO_EMAIL_BACKEND",
-    default="django.core.mail.backends.console.EmailBackend",
+    "django.core.mail.backends.console.EmailBackend",  # type: ignore[call-overload]
 )
 
 # django-debug-toolbar
@@ -65,3 +66,20 @@ CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_EAGER_PROPAGATES = False
 # Your stuff...
 # ------------------------------------------------------------------------------
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
+
+
+TAVILY_API_KEY = env.str("TAVILY_API_KEY", "")  # type: ignore[call-overload]
+OPENAI_API_KEY = env.str("OPENAI_API_KEY", "")  # type: ignore[call-overload]
+
+CHROMA_USE_CLOUD = True
+CHROMA_API_KEY = env.str("CHROMA_API_KEY", "")  # type: ignore[call-overload]
+CHROMA_TENANT = env.str("CHROMA_TENANT", "")  # type: ignore[call-overload]
+CHROMA_DATABASE = "ph-dev"

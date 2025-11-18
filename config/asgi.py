@@ -12,7 +12,19 @@ import os
 import sys
 from pathlib import Path
 
+# This application object is used by any ASGI server configured to use this file.
+# This has to be imported before the channels stuff, otherwise an "Apps aren't
+#   loaded yet" error occurs
 from django.core.asgi import get_asgi_application
+
+django_application = get_asgi_application()
+
+from channels.auth import AuthMiddlewareStack  # noqa: E402
+from channels.routing import ProtocolTypeRouter  # noqa: E402
+from channels.routing import URLRouter  # noqa: E402
+from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
+
+import config.routing  # noqa: E402
 
 # This allows easy placement of apps within the interior
 # sdm_platform directory.
@@ -22,18 +34,15 @@ sys.path.append(str(BASE_DIR / "sdm_platform"))
 # If DJANGO_SETTINGS_MODULE is unset, default to the local settings
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
 
-# This application object is used by any ASGI server configured to use this file.
-django_application = get_asgi_application()
-
-# Import websocket application here, so apps from django_application are loaded first
-from config.websocket import websocket_application  # noqa: E402
-
-
-async def application(scope, receive, send):
-    if scope["type"] == "http":
-        await django_application(scope, receive, send)
-    elif scope["type"] == "websocket":
-        await websocket_application(scope, receive, send)
-    else:
-        msg = f"Unknown scope type {scope['type']}"
-        raise NotImplementedError(msg)
+application = ProtocolTypeRouter(
+    {
+        "http": django_application,
+        "websocket": AllowedHostsOriginValidator(
+            AuthMiddlewareStack(
+                URLRouter(
+                    config.routing.websocket_urlpatterns,
+                ),
+            ),
+        ),
+    },
+)

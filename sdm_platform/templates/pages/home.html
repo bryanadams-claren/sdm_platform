@@ -1,1 +1,102 @@
 {% extends "base.html" %}
+
+{% block content %}
+  <!-- Hero -->
+  <header class="bg-white text-center py-5 mt-5 border-bottom">
+    <div class="container">
+      <h1 class="fw-bold">Perspicacious Health</h1>
+      <p class="lead text-muted">
+        Shared Decision Making (SDM) puts patients in control of their own healthcare.  Perspicacious
+        Health helps patient, providers and payers work together to replace prior authorization with
+        educated consensus.
+      </p>
+    </div>
+  </header>
+  <!-- About Section -->
+  <section id="about">
+    <div class="container">
+      <h2 class="section-heading">About</h2>
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <p class="text-center text-muted">
+            Our clinical staff works directly with patient who are at a treatment crossroads.  Medical
+            literature can be dense and confusing, and active providers often can't spare the time to
+            help patients sort through the latest data.  Perspicacious Health steps in and fills this gap
+            with access to the best information, presented in easy-to-understand ways, using modern synchronous
+            and asynchronous communication platforms.  We help patients understand their treatment options
+            and, in so doing, make sure everyone gets the right care at the right time.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- Clients Section -->
+  <section id="stakeholders" class="bg-white">
+    <div class="container">
+      <h2 class="section-heading">Who We Serve</h2>
+      <div class="row text-center">
+        <div class="col-md-4 mb-4">
+          <div class="card p-4 shadow-sm">
+            <h5>Patients</h5>
+            <p class="text-muted">
+              We help patients learn about treatment options at their own pace, from
+              industry-leading sources, so they can make the right choices for themselves.
+            </p>
+          </div>
+        </div>
+        <div class="col-md-4 mb-4">
+          <div class="card p-4 shadow-sm">
+            <h5>Providers</h5>
+            <p class="text-muted">
+              We help sort through the medical literature and provide patients with the
+              time and space they need to get their questions answered and make a confident decision.
+            </p>
+          </div>
+        </div>
+        <div class="col-md-4 mb-4">
+          <div class="card p-4 shadow-sm">
+            <h5>Health Plans</h5>
+            <p class="text-muted">
+              By replacing Prior Authorization with SDM, plans create better member experiences,
+              reduce overhead expense, and still see med expense reductions.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- Contact Section -->
+  <section id="contact">
+    <div class="container">
+      <h2 class="section-heading">Contact</h2>
+      <div class="row justify-content-center">
+        <div class="col-md-6">
+          <form>
+            <div class="mb-3">
+              <label for="name" class="form-label">Your Name</label>
+              <input type="text"
+                     class="form-control"
+                     id="name"
+                     placeholder="Enter your name" />
+            </div>
+            <div class="mb-3">
+              <label for="email" class="form-label">Your Email</label>
+              <input type="email"
+                     class="form-control"
+                     id="email"
+                     placeholder="Enter your email" />
+            </div>
+            <div class="mb-3">
+              <label for="message" class="form-label">Message</label>
+              <textarea class="form-control"
+                        id="message"
+                        rows="5"
+                        placeholder="Enter your message"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Send Message</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock content %}

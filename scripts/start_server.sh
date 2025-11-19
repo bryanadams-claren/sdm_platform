@@ -35,6 +35,7 @@ export DJANGO_SETTINGS_MODULE="config.settings.production"
 # proxy, can handle all the requests.
 # How many workers? https://docs.gunicorn.org/en/stable/design.html#how-many-workers
 # gunicorn config.wsgi --bind 0.0.0.0:5000 --daemon
+source $HOME/.local/bin/env
 uv run uvicorn config.asgi:application --host 0.0.0.0  --port 80 --reload --reload-include '*.html'
 # -------------------------------------------------------------------------------------
 

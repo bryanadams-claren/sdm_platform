@@ -108,7 +108,7 @@ jobs:
           --description="$GITHUB_SHA" \
           --application-name "$DEPLOY_APP_NAME" \
           --region "$AWS_REGION" \
-          --github-location repository="$GITHUB_REPOSITORY",commitId="$GITHUB_SHA" \
+          --github-location repository="$GITHUB_REPOSITORY",commitId="$GITHUB_SHA"
 
       # You need to change this section for your single-execution per-deployment script
       # based on your needs

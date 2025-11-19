@@ -6,14 +6,16 @@ env:
   COMPOSE_DOCKER_CLI_BUILD: 1
 
 on:
+  workflow_dispatch:
   pull_request:
-    branches: ['main']
+    branches: ['main', 'master']
     paths-ignore: ['docs/**']
 
   push:
-    branches: ['main']
+    branches: ['main', 'master']
     paths-ignore: ['docs/**']
 
+# -- these are not in the sample file ...
 concurrency:
   group: ${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -78,3 +80,41 @@ jobs:
 
       - name: Test with pytest
         run: uv run pytest
+#--------------------------------------------------------------------------------------
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        if: |
+          github.event_name == 'push'
+          && (github.ref == 'refs/heads/main' || github.head_ref == 'refs/heads/master')
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }} # if you have/need it
+          aws-region: ${{ secrets.AWS_CODEDEPLOY_REGION }}
+# AWS CLI Docs: https://docs.aws.amazon.com/codedeploy/latest/userguide/deployments-create-cli.html
+      - name: Deploy to CodeDeploy
+        # success() checks if the previous job was canceled or not
+        if: ${{ success() }}
+        env:
+          DEPLOYMENT_GROUP: ${{ secrets.AWS_CODEDEPLOY_DEPLOYMENT_GROUP }}
+          DEPLOY_APP_NAME: ${{ secrets.AWS_CODEDEPLOY_APPLICATION_NAME }}
+        run: |
+          aws deploy create-deployment \
+          --deployment-group-name "$DEPLOYMENT_GROUP" \
+          --description="$GITHUB_SHA" \
+          --application-name "$DEPLOY_APP_NAME" \
+          --github-location repository="$GITHUB_REPOSITORY",commitId="$GITHUB_SHA"
+
+# You need to change this section for your single-execution per-deployment script
+# based on your needs
+#--------------------------------------------------------------------------------------
+      - name: Run single-execution per-deployment script
+        # success() checks whether the previous job was successful
+        if: ${{ success() }}
+        env:
+          CI_CD_DEPLOYMENT_AUTH_TOKEN: ${{ secrets.CI_CD_DEPLOYMENT_AUTH_TOKEN }}
+        # Migrate so we can eventually check the latest migration
+        run: python manage.py deployment
+
+# Change ends here
+#--------------------------------------------------------------------------------------

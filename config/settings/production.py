@@ -45,7 +45,7 @@ CACHES = {
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-proxy-ssl-header
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-ssl-redirect
-SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)  # type: ignore[call-overload]
+SECURE_SSL_REDIRECT = False
 # https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-secure
 SESSION_COOKIE_SECURE = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-name
@@ -254,4 +254,4 @@ OPENAI_API_KEY = env("OPENAI_API_KEY", default="")  # type: ignore[call-overload
 CHROMA_USE_CLOUD = True
 CHROMA_API_KEY = env("CHROMA_API_KEY", default="")  # type: ignore[call-overload]
 CHROMA_TENANT = env("CHROMA_TENANT", default="")  # type: ignore[call-overload]
-CHROMA_DATABASE = env("CHROMA_DATABASE", default="")  # type: ignore[call-overload]
+CHROMA_DATABASE = "ph-prod"

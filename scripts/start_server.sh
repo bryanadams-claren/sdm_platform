@@ -1,0 +1,63 @@
+#!/bin/bash
+
+cd /home/ubuntu
+
+# We're doing everything by path (i.e. glob) so make sure you have
+# the slash at the beginning and end of the prefix!
+PARAMETER_STORE_PREFIX="/sdm_platform/"
+
+# Storing all secrets in a .env.json file in the root directory. I've implemented
+# a wrapper around django-environ to read in JSON files as well in config/settings/base.py
+# -------------------------------------------------------------------------------------
+# Grabbing our environment variables from Parameter Store and storing it in a JSON file
+echo $(aws ssm get-parameters-by-path --with-decryption --region us-east-2 \
+--path "${PARAMETER_STORE_PREFIX}") > /home/ubuntu/.env.json
+
+# -------------------------------------------------------------------------------------
+
+# This is Django/Flask/FastAPI specific. This is where you'll need to replace
+# things if you're not using Django or if you're using an async framework (i.e. using
+# websockets, long polling, etc.).
+
+# source venv/bin/activate
+export DJANGO_SETTINGS_MODULE="config.settings.production"
+
+# Single server running both celery and web server
+# -------------------------------------------------------------------------------------
+### If you want Celery using detached mode (if you want to add more nodes, then you'll
+### need to run with supervisor. That's not something I want to set up here right now
+### since it's more advisable to just have a separate autoscaling group with a different
+### script):
+# celery -A config.celery_app multi start worker -B -l info
+
+# The following is Django oriented where I'm starting my HTTP server. If you're using a
+# different web framework, understand that my port is on 5000 so that NGINX, the reverse
+# proxy, can handle all the requests.
+# How many workers? https://docs.gunicorn.org/en/stable/design.html#how-many-workers
+# gunicorn config.wsgi --bind 0.0.0.0:5000 --daemon
+uv run uvicorn config.asgi:application --host 0.0.0.0  --port 80 --reload --reload-include '*.html'
+# -------------------------------------------------------------------------------------
+
+# Multiple servers, one deployment group for Celery and another for Django
+# NOTE: If you can, make three groups: one specifically to run ONE instance of celery
+# beat, another for all celery workers, and another for our web servers.
+# -------------------------------------------------------------------------------------
+### This portion assumes you made two Autoscaling groups
+# if ["$DEPLOYMENT_GROUP_NAME" == "project-Celery"]
+# then
+#  celery -A config.celery_app worker -B -l info
+# else
+#  gunicorn config.wsgi --bind 0.0.0.0:5000
+# fi
+
+### This portion assumes you made three Autoscaling groups
+# if ["$DEPLOYMENT_GROUP_NAME" == "project-CeleryBeat"]
+# then
+#   celery -A config.celery_app beat -l info
+# elif ["$DEPLOYMENT_GROUP_NAME" == "project-CeleryWorker"]
+# then
+#   celery -A config.celery_app worker -l info
+# else
+#   gunicorn config.wsgi --bind 0.0.0.0:5000
+# fi
+# -------------------------------------------------------------------------------------

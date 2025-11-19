@@ -1,10 +1,44 @@
 # ruff: noqa: ERA001, E501
 """Base settings to build other settings files upon."""
 
+import json
 import ssl
 from pathlib import Path
 
 import environ
+
+
+class Env(environ.Env):
+    @classmethod
+    def read_json(
+        cls,
+        json_file: Path = None,  # noqa: RUF013 # pyright: ignore[reportArgumentType]
+        *,
+        key_handler: callable = lambda x: x,
+        value_handler: callable = lambda x: x,
+        **overrides,
+    ):
+        """
+        Reads a JSON file and accepts overrides as kwargs.
+
+        value_handler is a callable/lambda function that parses the values and the
+        function should output your value. E.g., the Parameter Store example had values
+        of {"Value": "", "ARN": ""}. So my callable would be:
+
+        Env.read_json(lambda x: x["Value"])
+        """
+        data = {}
+        if json_file is not None:
+            data = json.loads(json_file.read_text())
+            if "Parameters" in data and isinstance(data["Parameters"], list):
+                # AWS based environment file, so we need to reconstruct
+                data = {x["Name"]: x for x in data["Parameters"]}
+        # if you're on Python 3.9, you can just do `data |= overrides`
+        for key, value in {**data, **overrides}.items():
+            # This is putting everything into the Python process's environment
+            # It's literally doing os.environ[key] = value_handler(value)
+            cls.ENVIRON.setdefault(key_handler(key), value_handler(value))
+
 
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 # sdm_platform/
@@ -20,9 +54,16 @@ if READ_DOT_ENV_FILE:
     env.read_env(Path(ENV_DIR) / ".django")
     env.read_env(Path(ENV_DIR) / ".postgres")
     env.read_env(Path(ENV_DIR) / ".secrets")
-else:
-    # -- on production, we'll pull them from the AWS parameters
-    pass
+
+# For production with parameter store
+READ_JSON_FILE = env.bool("DJANGO_READ_JSON_FILE", default=False)
+if READ_JSON_FILE or (BASE_DIR / ".env.json").is_file():
+    env.read_json(
+        BASE_DIR / ".env.json",
+        # Replacing the prefix
+        key_handler=lambda x: x.replace("/sdm_platform/", "", 1),
+        value_handler=lambda x: x["Value"],
+    )
 
 # GENERAL
 # ------------------------------------------------------------------------------

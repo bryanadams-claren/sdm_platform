@@ -152,7 +152,6 @@ LOCAL_APPS = [
     "sdm_platform.users",
     "sdm_platform.llmchat",
     "sdm_platform.evidence",
-    #    "sdm_platform.evidence.apps.EvidenceConfig", #??
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps

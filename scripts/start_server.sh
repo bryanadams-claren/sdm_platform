@@ -37,7 +37,15 @@ export DJANGO_READ_DOT_ENV_FILE=0
 # How many workers? https://docs.gunicorn.org/en/stable/design.html#how-many-workers
 # gunicorn config.wsgi --bind 0.0.0.0:5000 --daemon
 source $HOME/.local/bin/env
-uv run uvicorn config.asgi:application --host 0.0.0.0  --port 80 --reload --reload-include '*.html'
+# uv run uvicorn config.asgi:application --host 0.0.0.0  --port 80 --reload --reload-include '*.html'
+uv run gunicorn config.asgi:application \
+  --worker-class uvicorn.workers.UvicornWorker \
+  --bind 0.0.0.0:80 \
+  --workers 4 \
+  --daemon \
+  --access-logfile /var/log/gunicorn-access.log \
+  --error-logfile /var/log/gunicorn-error.log
+
 # -------------------------------------------------------------------------------------
 
 # Multiple servers, one deployment group for Celery and another for Django

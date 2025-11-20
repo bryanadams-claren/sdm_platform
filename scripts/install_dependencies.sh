@@ -3,7 +3,8 @@ sudo apt update
 sudo apt -y upgrade
 
 # Destination folder
-cd /home/ubuntu
+mkdir /app/
+cd /app/
 # AWS CLI needed to get parameters
 sudo snap install aws-cli --classic
 
@@ -69,7 +70,7 @@ sudo snap install aws-cli --classic
 # ------------------------------------------------------------------------------------
 # install uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
-# make sure it's on the path
+# make sure it's on the path (this will likely be root)
 source $HOME/.local/bin/env
 
 uv sync --locked

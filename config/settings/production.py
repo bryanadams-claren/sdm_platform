@@ -19,7 +19,7 @@ from .base import env
 if os.environ.get("AWS_EXECUTION_ENV"):  # Only on AWS, not locally
     from .aws_local import load_ssm_secrets
 
-    load_ssm_secrets(env, prefix="/sdm_platform")
+    load_ssm_secrets(env, prefix="/sdm_platform/")
 
 # GENERAL
 # ------------------------------------------------------------------------------

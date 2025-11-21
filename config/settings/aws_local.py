@@ -16,9 +16,15 @@ def load_ssm_secrets(env: environ.Env, prefix: str = "/myapp"):
     Example:
         /myapp/DJANGO_SECRET_KEY -> os.environ['DJANGO_SECRET_KEY']
     """
+    # Ensure prefix starts with / and ends with /
+    if not prefix.startswith("/"):
+        prefix = f"/{prefix}"
+    if not prefix.endswith("/"):
+        prefix = f"{prefix}/"
+
     ssm = boto3.client(
         "ssm",
-        region_name=env("AWS_PARAMETER_REGION", default="us-east-2"),  # pyright: ignore[reportArgumentType]
+        region_name=env("AWS_REGION", default="us-east-2"),  # pyright: ignore[reportArgumentType]
     )
     try:
         # Fetch parameters by path
@@ -28,9 +34,10 @@ def load_ssm_secrets(env: environ.Env, prefix: str = "/myapp"):
         ):
             for param in page.get("Parameters", []):
                 # Strip the prefix and any leading slash
-                env_key = param["Name"].replace(prefix, "").lstrip("/").upper()
+                env_key = param["Name"].replace(prefix, "", 1).lstrip("/").upper()
                 os.environ[env_key] = param["Value"]
+                logger.info("Loaded SSM parameter: %s", env_key)
     except ClientError:
-        errmsg = "Error loading SSM parameters"
+        errmsg = f"Error loading SSM parameters from path: {prefix}"
         logger.exception(errmsg)
         raise

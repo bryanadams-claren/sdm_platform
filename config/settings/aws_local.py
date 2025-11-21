@@ -15,8 +15,7 @@ def load_ssm_secrets(env: environ.Env, prefix: str = "/myapp"):
     Example:
         /myapp/DJANGO_SECRET_KEY -> os.environ['DJANGO_SECRET_KEY']
     """
-    ssm = boto3.client("ssm", region_name=env("AWS_REGION", "us-east-2"))
-
+    ssm = boto3.client("ssm", region_name=env("AWS_REGION", default="us-east-2"))  # pyright: ignore[reportArgumentType]
     try:
         # Fetch parameters by path
         paginator = ssm.get_paginator("get_parameters_by_path")

@@ -20,7 +20,8 @@ if READ_DOT_ENV_FILE:
     env.read_env(Path(ENV_DIR) / ".django")
     env.read_env(Path(ENV_DIR) / ".postgres")
     env.read_env(Path(ENV_DIR) / ".secrets")
-
+else:
+    DATABASE_URL = "postgres://{env('RDS_USERNAME')}:{env('RDS_PASSWORD')}@{env('RDS_HOSTNAME')}:{env('RDS_PORT')}/{env('RDS_DB_NAME')}"
 # GENERAL
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#debug

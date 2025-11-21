@@ -21,7 +21,6 @@ def load_ssm_secrets(env: environ.Env, prefix: str = "/myapp"):
         prefix = f"/{prefix}"
     if not prefix.endswith("/"):
         prefix = f"{prefix}/"
-
     ssm = boto3.client(
         "ssm",
         region_name=env("AWS_REGION", default="us-east-2"),  # pyright: ignore[reportArgumentType]

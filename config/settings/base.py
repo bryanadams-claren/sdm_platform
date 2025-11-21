@@ -6,8 +6,6 @@ from pathlib import Path
 
 import environ
 
-from .aws_local import load_ssm_secrets
-
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 # sdm_platform/
 APPS_DIR = BASE_DIR / "sdm_platform"
@@ -22,9 +20,6 @@ if READ_DOT_ENV_FILE:
     env.read_env(Path(ENV_DIR) / ".django")
     env.read_env(Path(ENV_DIR) / ".postgres")
     env.read_env(Path(ENV_DIR) / ".secrets")
-else:
-    # -- in production, load up the secrets from AWS SSM Parameter Store
-    load_ssm_secrets(env, "sdm_platform")
 
 # GENERAL
 # ------------------------------------------------------------------------------

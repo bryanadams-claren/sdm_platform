@@ -1,5 +1,6 @@
 # ruff: noqa: E501
 import logging
+import os
 
 import sentry_sdk
 from sentry_sdk.integrations.celery import CeleryIntegration
@@ -13,6 +14,12 @@ from .base import INSTALLED_APPS
 from .base import REDIS_URL
 from .base import SPECTACULAR_SETTINGS
 from .base import env
+
+# Load SSM parameters before anything else
+if os.environ.get("AWS_EXECUTION_ENV"):  # Only on AWS, not locally
+    from .aws_local import load_ssm_secrets
+
+    load_ssm_secrets(env, prefix="/sdm_platform")
 
 # GENERAL
 # ------------------------------------------------------------------------------

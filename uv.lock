@@ -3043,6 +3043,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "argon2-cffi" },
+    { name = "boto3" },
     { name = "celery" },
     { name = "channels" },
     { name = "channels-redis" },
@@ -3109,6 +3110,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "argon2-cffi", specifier = "==25.1.0" },
+    { name = "boto3", specifier = ">=1.40.71" },
     { name = "celery", specifier = "==5.5.3" },
     { name = "channels", specifier = ">=4.3.1" },
     { name = "channels-redis", specifier = ">=4.3.0" },

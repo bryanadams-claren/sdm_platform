@@ -39,6 +39,7 @@ billiard==4.2.3
     # via celery
 boto3==1.41.1
     # via
+    #   sdm-platform (./pyproject.toml)
     #   django-anymail
     #   django-storages
 botocore==1.41.1

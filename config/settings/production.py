@@ -113,13 +113,16 @@ STORAGES = {
         "OPTIONS": {
             "location": "media",
             "file_overwrite": False,
+            "default_acl": None,
+            "custom_domain": AWS_S3_OBJECT_PARAMETERS,
         },
     },
     "staticfiles": {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
             "location": "static",
-            "default_acl": "public-read",
+            "default_acl": None,
+            "custom_domain": AWS_S3_OBJECT_PARAMETERS,
         },
     },
 }

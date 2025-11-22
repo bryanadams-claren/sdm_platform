@@ -26,6 +26,7 @@ ALLOWED_HOSTS = env.list(
         "perspicacioushealth.com",
         ".perspicacioushealth.com",
         ".elasticbeanstalk.com",
+        "*",
     ],
 )  # type: ignore[call-overload]
 

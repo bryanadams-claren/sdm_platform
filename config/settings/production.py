@@ -25,7 +25,7 @@ ALLOWED_HOSTS = env.list(
     default=[  # pyright: ignore[reportArgumentType]
         "perspicacioushealth.com",
         ".perspicacioushealth.com",
-        ".elasticbeanstalk.com",
+        "*.elasticbeanstalk.com",
     ],
 )  # type: ignore[call-overload]
 

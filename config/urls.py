@@ -2,15 +2,27 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from django.http import HttpResponse
 from django.urls import include
 from django.urls import path
 from django.views import defaults as default_views
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView
 from drf_spectacular.views import SpectacularSwaggerView
 from rest_framework.authtoken.views import obtain_auth_token
 
+
+@never_cache
+@csrf_exempt
+def health_check(request):
+    """Simple health check endpoint for load balancer."""
+    return HttpResponse("OK", content_type="text/plain", status=200)
+
+
 urlpatterns = [
+    path("health/", health_check, name="health"),
     path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
     path(
         "about/",

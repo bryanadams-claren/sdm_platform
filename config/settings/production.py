@@ -24,7 +24,8 @@ ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
     default=[  # pyright: ignore[reportArgumentType]
         "perspicacioushealth.com",
-        "sdm-platform-py13.us-east-2.elasticbeanstalk.com",
+        ".perspicacioushealth.com",
+        ".elasticbeanstalk.com",
     ],
 )  # type: ignore[call-overload]
 

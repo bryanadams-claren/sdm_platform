@@ -114,7 +114,7 @@ STORAGES = {
             "location": "media",
             "file_overwrite": False,
             "default_acl": None,
-            "custom_domain": AWS_S3_OBJECT_PARAMETERS,
+            "object_parameters": AWS_S3_OBJECT_PARAMETERS,
         },
     },
     "staticfiles": {
@@ -122,7 +122,7 @@ STORAGES = {
         "OPTIONS": {
             "location": "static",
             "default_acl": None,
-            "custom_domain": AWS_S3_OBJECT_PARAMETERS,
+            "object_parameters": AWS_S3_OBJECT_PARAMETERS,
         },
     },
 }

@@ -1,11 +1,10 @@
-# Create Elastic Beanstalk environment for Celery workers
+# Create Elastic Beanstalk worker environment
 param(
     [string]$EnvName = "sdm-platform-dev-worker"
 )
 
-Write-Host "Creating EB environment for Celery workers: $EnvName" -ForegroundColor Cyan
+Write-Host "Creating EB worker environment: $EnvName" -ForegroundColor Cyan
 
-# Create as single-instance (no load balancer needed for workers)
 uv run eb create $EnvName `
   --single `
   --instance_type t3.small `
@@ -17,7 +16,7 @@ uv run eb create $EnvName `
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`nWorker environment created successfully!" -ForegroundColor Green
-    Write-Host "Check status with: uv run eb status $EnvName"
+    Write-Host "Environment will auto-detect and use worker Procfile"
 } else {
     Write-Host "`nFailed to create worker environment" -ForegroundColor Red
     exit 1

@@ -1,0 +1,8 @@
+PREREQUISITES:
+- An RDS database (VPC?  Security groups?)
+- An S3 bucket (VPC?  Security groups?)
+- A DNS entry and certificate hosted on Route53
+
+First, create_redis (which uses ElastiCache)
+Then, create_web and create_worker
+Then, deploy_web and deploy_worker

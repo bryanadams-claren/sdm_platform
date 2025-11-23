@@ -1,9 +1,9 @@
-# Create Elastic Beanstalk environment with load balancer
+# Create Elastic Beanstalk web environment
 param(
     [string]$EnvName = "sdm-platform-dev-web"
 )
 
-Write-Host "Creating EB environment for web workers: $EnvName" -ForegroundColor Cyan
+Write-Host "Creating EB web environment: $EnvName" -ForegroundColor Cyan
 
 uv run eb create $EnvName `
   --instance_type t3.small `
@@ -18,8 +18,8 @@ uv run eb create $EnvName `
   --scale 1
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "`Web environment created successfully!" -ForegroundColor Green
-    Write-Host "Check status with: uv run eb status $EnvName"
+    Write-Host "`nWeb environment created successfully!" -ForegroundColor Green
+    Write-Host "Environment will auto-detect and use web Procfile"
 } else {
     Write-Host "`nFailed to create web environment" -ForegroundColor Red
     exit 1

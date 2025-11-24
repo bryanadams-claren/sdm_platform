@@ -7,20 +7,23 @@ from django.db import migrations
 
 def setup_checkpointer(apps, schema_editor):
     """Initialize the PostgresSaver checkpoints table."""
+    import environ
     from langgraph.checkpoint.postgres import PostgresSaver
     
-    from sdm_platform.llmchat.utils.graph import get_postgres_checkpointer  # pyright: ignore[reportAttributeAccessIssue]
+    # Get the database URL directly and create the checkpointer
+    env = environ.Env()
     
-    # Get the checkpointer and call setup to create the table
-    checkpointer = get_postgres_checkpointer()
-    checkpointer.setup()  # pyright: ignore[reportAttributeAccessIssue]
-
+    # PostgresSaver.from_conn_string returns a context manager
+    # We need to use it with 'with' statement
+    with PostgresSaver.from_conn_string(env.str("DATABASE_URL")) as checkpointer:  # pyright: ignore[reportArgumentType]
+        checkpointer.setup()
 
 def teardown_checkpointer(apps, schema_editor):
     """Drop the checkpoints table on migration rollback."""
     # Use raw SQL to drop the table if needed
     with schema_editor.connection.cursor() as cursor:
         cursor.execute("DROP TABLE IF EXISTS checkpoints CASCADE")
+        # TODO: more teardown logic belongs here
 
 
 class Migration(migrations.Migration):

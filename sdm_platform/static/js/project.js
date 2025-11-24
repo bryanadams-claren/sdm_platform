@@ -266,8 +266,9 @@ async function setActiveChat(chatId) {
   if (activeEl) activeEl.classList.add("active");
 
   // Reset the websocket
+  const wsScheme = window.location.protocol === "https:" ? "wss://" : "ws://";
   chatSocket = new WebSocket(
-'ws://' + window.location.host + '/ws/chat/' + activeConvId + '/'
+    wsScheme + window.location.host + '/ws/chat/' + activeConvId + '/'
   );
   chatSocket.onopen = function(e) {
     enableChatInput();

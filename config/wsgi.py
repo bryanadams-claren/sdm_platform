@@ -14,17 +14,20 @@ framework.
 
 """
 
-import os
 import sys
 from pathlib import Path
 
-from django.core.wsgi import get_wsgi_application
+# Setup environment before importing Django
+from config.env_setup import setup_django_environment
+
+setup_django_environment()
+
+from django.core.wsgi import get_wsgi_application  # noqa: E402
 
 # This allows easy placement of apps within the interior
 # sdm_platform directory.
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 sys.path.append(str(BASE_DIR / "sdm_platform"))
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
 
 # This application object is used by any WSGI server configured to use this
 # file. This includes Django's development server, if the WSGI_APPLICATION

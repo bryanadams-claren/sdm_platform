@@ -1,8 +1,3 @@
 # PostgreSQL
 # ------------------------------------------------------------------------------
-# POSTGRES_HOST=postgres
-# POSTGRES_PORT=5432
-# POSTGRES_DB=sdm_platform
-# POSTGRES_USER=sdm_user
-# POSTGRES_PASSWORD=sdm_user_perspicacious
 DATABASE_URL=postgres://sdm_user:sdm_user_perspicacious@127.0.0.1:5432/sdm_platform

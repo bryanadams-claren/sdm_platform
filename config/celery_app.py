@@ -1,10 +1,10 @@
-import os
-
 from celery import Celery
 from celery.signals import setup_logging
 
-# set the default Django settings module for the 'celery' program.
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
+# Setup environment before importing Django
+from config.env_setup import setup_django_environment
+
+setup_django_environment()
 
 app = Celery("sdm_platform")
 

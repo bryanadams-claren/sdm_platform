@@ -2,13 +2,13 @@
 # ------------------------------------------------------------------------------
 USE_DOCKER=no
 IPYTHONDIR=/app/.ipython
+DJANGO_SECRET_KEY=)V()sO8YuSH=u*RsDHaX)qu)Ifafm=@vGwq)9N9Hov!0D8aw_-
+DJANGO_ADMIN_URL=admin/
+
+# Database
+# ------------------------------------------------------------------------------
+DATABASE_URL=postgres://sdm_user:sdm_user_perspicacious@127.0.0.1:5432/sdm_platform
+
 # Redis
 # ------------------------------------------------------------------------------
 REDIS_URL=redis://127.0.0.1:6379/0
-
-# Celery
-# ------------------------------------------------------------------------------
-
-# Flower
-CELERY_FLOWER_USER=ZMVxSGLOQLUYVbHCfcBiyNuaMXRtyrRf
-CELERY_FLOWER_PASSWORD=gVTiSBG6282Uat3MywkRQ0iU2KwcUovz5vcYz7zQMGZFFy0ci7DOwgJdo8kBMZkh

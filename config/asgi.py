@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 ASGI config for SDM Platform project.
 
@@ -8,9 +9,13 @@ https://docs.djangoproject.com/en/dev/howto/deployment/asgi/
 
 """
 
-import os
 import sys
 from pathlib import Path
+
+# Setup environment before importing Django
+from config.env_setup import setup_django_environment
+
+setup_django_environment()
 
 # This application object is used by any ASGI server configured to use this file.
 # This has to be imported before the channels stuff, otherwise an "Apps aren't
@@ -19,20 +24,17 @@ from django.core.asgi import get_asgi_application
 
 django_application = get_asgi_application()
 
-from channels.auth import AuthMiddlewareStack  # noqa: E402
-from channels.routing import ProtocolTypeRouter  # noqa: E402
-from channels.routing import URLRouter  # noqa: E402
-from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
+from channels.auth import AuthMiddlewareStack
+from channels.routing import ProtocolTypeRouter
+from channels.routing import URLRouter
+from channels.security.websocket import AllowedHostsOriginValidator
 
-import config.routing  # noqa: E402
+import config.routing
 
 # This allows easy placement of apps within the interior
 # sdm_platform directory.
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 sys.path.append(str(BASE_DIR / "sdm_platform"))
-
-# If DJANGO_SETTINGS_MODULE is unset, default to the local settings
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
 
 application = ProtocolTypeRouter(
     {

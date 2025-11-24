@@ -11,6 +11,9 @@ BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 APPS_DIR = BASE_DIR / "sdm_platform"
 env = environ.Env()
 
+# Read .env file if it exists (for local development convenience)
+env.read_env(str(BASE_DIR / ".env"))
+
 if env("DJANGO_SETTINGS_MODULE") == "config.settings.local":
     # -- locally, we're storing secrets in the .envs directory
     ENV_DIR = (

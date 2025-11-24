@@ -1,3 +1,0 @@
-# PostgreSQL
-# ------------------------------------------------------------------------------
-DATABASE_URL=postgres://sdm_user:sdm_user_perspicacious@127.0.0.1:5432/sdm_platform

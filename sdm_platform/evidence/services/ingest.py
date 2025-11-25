@@ -1,8 +1,10 @@
 # evidence/services/ingest.py
+import contextlib
 import datetime
 import hashlib
 import logging
 import os
+import tempfile
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -84,20 +86,34 @@ class DocumentIngestor:
         )
 
     def _load_text(self):
-        file_path = self.document.file.path
-        ext = Path(file_path).suffix.lower()
-        if ext == ".pdf":
-            loader = PyPDFLoader(file_path)
-        elif ext == ".txt":
-            loader = TextLoader(file_path, encoding="utf-8")
-        else:
-            loader = UnstructuredFileLoader(file_path)
+        # Get the file from storage (works with both local and S3)
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=Path(self.document.file.name).suffix
+        ) as tmp_file:
+            # Read from S3 and write to temp file
+            self.document.file.open("rb")
+            tmp_file.write(self.document.file.read())
+            self.document.file.close()
+            file_path = tmp_file.name
 
-        docs = loader.load()
-        if not docs:
-            errmsg = "No text extracted from file: %s"
-            raise RuntimeError(errmsg, file_path)
-        return docs
+        try:
+            ext = Path(file_path).suffix.lower()
+            if ext == ".pdf":
+                loader = PyPDFLoader(file_path)
+            elif ext == ".txt":
+                loader = TextLoader(file_path, encoding="utf-8")
+            else:
+                loader = UnstructuredFileLoader(file_path)
+
+            docs = loader.load()
+            if not docs:
+                errmsg = "No text extracted from file: %s"
+                raise RuntimeError(errmsg, file_path)
+            return docs
+        finally:
+            # Clean up the temporary file
+            with contextlib.suppress(FileNotFoundError, PermissionError, OSError):
+                Path(file_path).unlink()
 
     def _split(self, docs):
         splitter = RecursiveCharacterTextSplitter(

@@ -213,7 +213,7 @@ class DocumentIngestor:
         #  a statement like self.chroma_client.max_api_size = 300
         batches = create_batches_local(
             ids=ids,
-            embeddings=embeddings,
+            embeddings=embeddings,  # pyright: ignore[reportArgumentType]
             metadatas=metadatas,
             documents=texts,
         )
@@ -250,7 +250,7 @@ class DocumentIngestor:
 
         batches = create_batches_local(
             ids=ids,
-            embeddings=embeddings,
+            embeddings=embeddings,  # pyright: ignore[reportArgumentType]
             metadatas=metadatas,
             documents=texts,
         )

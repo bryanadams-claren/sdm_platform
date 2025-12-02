@@ -330,6 +330,7 @@ sdm_platform/media/
 
 .envs/.production
 .envs/.local/.secrets
+.envs/.local/.aws-*
 
 # Elastic Beanstalk Files
 .elasticbeanstalk/*

@@ -1,0 +1,78 @@
+{
+  "slug": "kneepain",
+  "title": "Knee Pain Decision Support",
+  "description": "Understand your knee pain and explore evidence-based treatment options.",
+  "subdomain": "kneepain",
+  "welcome_message": "<p>Welcome! Let's talk about your knee pain and what options might work best for you.</p>",
+  "is_active": true,
+  "sort_order": 20,
+  "primary_color": "#28a745",
+  "hero_image": "",
+  "conversation_template_slug": "kneepain-sdm",
+  "system_prompt_template": "You are a healthcare assistant helping a patient with knee pain. The patient has: Duration: {duration}, Pain severity: {pain_severity}, Affected knee: {affected_knee}, Activity level: {activity_level}. Provide evidence-based guidance on treatment options.",
+  "onboarding_questions": [
+    {
+      "id": "duration",
+      "type": "choice",
+      "text": "How long have you had knee pain?",
+      "required": true,
+      "options": [
+        {
+          "value": "recent",
+          "label": "Less than 1 month",
+          "description": "Recent onset"
+        },
+        {
+          "value": "months",
+          "label": "1-6 months",
+          "description": "Several months"
+        },
+        {
+          "value": "chronic",
+          "label": "More than 6 months",
+          "description": "Chronic condition"
+        }
+      ]
+    },
+    {
+      "id": "affected_knee",
+      "type": "choice",
+      "text": "Which knee is affected?",
+      "required": true,
+      "options": [
+        {
+          "value": "left",
+          "label": "Left knee"
+        },
+        {
+          "value": "right",
+          "label": "Right knee"
+        },
+        {
+          "value": "both",
+          "label": "Both knees"
+        }
+      ]
+    },
+    {
+      "id": "pain_severity",
+      "type": "choice",
+      "text": "How severe is your knee pain?",
+      "required": true,
+      "options": [
+        {
+          "value": "mild",
+          "label": "Mild - slight discomfort"
+        },
+        {
+          "value": "moderate",
+          "label": "Moderate - affects some activities"
+        },
+        {
+          "value": "severe",
+          "label": "Severe - significantly limiting"
+        }
+      ]
+    }
+  ]
+}

@@ -110,7 +110,7 @@ LOCAL_APPS = [
     "sdm_platform.users",
     "sdm_platform.llmchat",
     "sdm_platform.evidence",
-    # Your stuff: custom apps go here
+    "sdm_platform.journeys",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -168,6 +168,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "sdm_platform.journeys.middleware.SubdomainJourneyMiddleware",
 ]
 
 # STATIC

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <!-- Hero Section -->
+  <header class="bg-light text-center py-5 mt-5"
+          style="{% if journey.hero_image %}background-image: url('{{ journey.hero_image }}');
+                 background-size: cover;
+                 background-position: center;
+                 {% endif %}">
+    <div class="container">
+      <div class="{% if journey.hero_image %}bg-white bg-opacity-75 p-4 rounded{% endif %}">
+        <h1 class="fw-bold" style="color: {{ journey.primary_color }}">{{ journey.title }}</h1>
+        <p class="lead text-muted mt-3">{{ journey.description }}</p>
+        <div class="mt-4">
+          <a href="{% url 'journeys:onboarding' journey.slug %}"
+             class="btn btn-lg btn-primary"
+             style="background-color: {{ journey.primary_color }};
+                    border-color: {{ journey.primary_color }}">Get Started</a>
+        </div>
+      </div>
+    </div>
+  </header>
+  <!-- Information Section -->
+  <section class="py-5">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h3 class="mb-4">What to Expect</h3>
+              <div class="mb-3">
+                <h5>
+                  <i class="bi bi-1-circle-fill text-primary me-2"></i>Share Your Experience
+                </h5>
+                <p class="text-muted ms-4">We'll ask you a few questions about your condition to understand your situation better.</p>
+              </div>
+              <div class="mb-3">
+                <h5>
+                  <i class="bi bi-2-circle-fill text-primary me-2"></i>Explore Your Options
+                </h5>
+                <p class="text-muted ms-4">
+                  Get access to an AI assistant trained on the latest medical literature to help you understand your treatment options.
+                </p>
+              </div>
+              <div class="mb-3">
+                <h5>
+                  <i class="bi bi-3-circle-fill text-primary me-2"></i>Make Informed Decisions
+                </h5>
+                <p class="text-muted ms-4">
+                  Take your time to ask questions and learn at your own pace. No pressure, just information.
+                </p>
+              </div>
+              <div class="text-center mt-4">
+                <a href="{% url 'journeys:onboarding' journey.slug %}"
+                   class="btn btn-primary"
+                   style="background-color: {{ journey.primary_color }};
+                          border-color: {{ journey.primary_color }}">Begin Your Journey</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- Trust Section -->
+  <section class="bg-light py-5">
+    <div class="container">
+      <div class="row text-center">
+        <div class="col-md-4 mb-4">
+          <div class="card h-100 border-0">
+            <div class="card-body">
+              <i class="bi bi-shield-check text-primary fs-1 mb-3"></i>
+              <h5>Evidence-Based</h5>
+              <p class="text-muted small">Information based on peer-reviewed medical research and clinical guidelines.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-4">
+          <div class="card h-100 border-0">
+            <div class="card-body">
+              <i class="bi bi-lock-fill text-primary fs-1 mb-3"></i>
+              <h5>Private & Secure</h5>
+              <p class="text-muted small">Your health information is confidential and protected.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-4">
+          <div class="card h-100 border-0">
+            <div class="card-body">
+              <i class="bi bi-clock-fill text-primary fs-1 mb-3"></i>
+              <h5>At Your Pace</h5>
+              <p class="text-muted small">Take as much time as you need. Your progress is saved automatically.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock content %}

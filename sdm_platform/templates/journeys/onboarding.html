@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% load static compress %}
+
+{% block content %}
+  <style>
+    /* Set journey-specific CSS variable */
+    :root {
+      --journey-primary-color: {
+          {
+          journey.primary_color
+        }
+      }
+
+      ;
+    }
+  </style>
+  <div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <!-- Progress bar -->
+        <div class="mb-4">
+          <div class="progress journey-progress">
+            <div class="progress-bar journey-progress-bar"
+                 role="progressbar"
+                 id="progressBar"
+                 aria-valuenow="0"
+                 aria-valuemin="0"
+                 aria-valuemax="100"></div>
+          </div>
+        </div>
+        <div class="card shadow">
+          <div class="card-body p-4">
+            <h2 class="mb-4 journey-title">{{ journey.title }}</h2>
+            {% if journey.welcome_message %}
+              <div class="alert alert-info mb-4">{{ journey.welcome_message|safe }}</div>
+            {% endif %}
+            <form id="onboardingForm">
+              {% csrf_token %}
+              <!-- Step 0: User Info (if not authenticated) -->
+              {% if not user.is_authenticated %}
+                <div class="onboarding-step active" data-step="0">
+                  <h4 class="mb-4">Let's start with your information</h4>
+                  <div class="mb-3">
+                    <label for="userName" class="form-label">
+                      Your Name <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           class="form-control form-control-lg"
+                           id="userName"
+                           name="name"
+                           placeholder="Enter your name"
+                           required />
+                  </div>
+                  <div class="mb-4">
+                    <label for="userEmail" class="form-label">
+                      Email <span class="text-muted">(optional)</span>
+                    </label>
+                    <input type="email"
+                           class="form-control form-control-lg"
+                           id="userEmail"
+                           name="email"
+                           placeholder="your@email.com" />
+                    <small class="form-text text-muted">We'll use this to save your progress and allow you to return later.</small>
+                  </div>
+                  <div class="d-flex justify-content-end">
+                    <button type="button"
+                            class="btn btn-primary btn-lg next-btn journey-btn-primary">
+                      Next <i class="bi bi-arrow-right ms-2"></i>
+                    </button>
+                  </div>
+                </div>
+              {% endif %}
+              <!-- Dynamic Question Steps -->
+              {% for question in questions %}
+                <div class="onboarding-step" data-step="{{ forloop.counter }}">
+                  <h4 class="mb-4">{{ question.text }}</h4>
+                  {% if question.type == 'choice' %}
+                    <div class="mb-4">
+                      {% for option in question.options %}
+                        <div class="form-check mb-3">
+                          <input class="form-check-input"
+                                 type="radio"
+                                 name="q_{{ question.id }}"
+                                 id="q{{ question.id }}_{{ forloop.counter }}"
+                                 value="{{ option.value }}"
+                                 required />
+                          <label class="form-check-label"
+                                 for="q{{ question.id }}_{{ forloop.counter }}">
+                            <strong>{{ option.label }}</strong>
+                            {% if option.description %}
+                              <br />
+                              <small class="text-muted">{{ option.description }}</small>
+                            {% endif %}
+                          </label>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% elif question.type == 'multiple' %}
+                    <div class="mb-4">
+                      <small class="text-muted d-block mb-2">Select all that apply</small>
+                      {% for option in question.options %}
+                        <div class="form-check mb-3">
+                          <input class="form-check-input"
+                                 type="checkbox"
+                                 name="q_{{ question.id }}"
+                                 id="q{{ question.id }}_{{ forloop.counter }}"
+                                 value="{{ option.value }}" />
+                          <label class="form-check-label"
+                                 for="q{{ question.id }}_{{ forloop.counter }}">
+                            <strong>{{ option.label }}</strong>
+                            {% if option.description %}
+                              <br />
+                              <small class="text-muted">{{ option.description }}</small>
+                            {% endif %}
+                          </label>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% elif question.type == 'text' %}
+                    <div class="mb-4">
+                      <textarea class="form-control"
+                                name="q_{{ question.id }}"
+                                rows="5"
+                                placeholder="Type your answer here..."
+                                required></textarea>
+                    </div>
+                  {% endif %}
+                  <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary btn-lg prev-btn">
+                      <i class="bi bi-arrow-left me-2"></i> Previous
+                    </button>
+                    {% if not forloop.last %}
+                      <button type="button"
+                              class="btn btn-primary btn-lg next-btn journey-btn-primary">
+                        Next <i class="bi bi-arrow-right ms-2"></i>
+                      </button>
+                    {% else %}
+                      <button type="submit" class="btn btn-success btn-lg journey-btn-primary">
+                        <i class="bi bi-chat-dots me-2"></i> Start Conversation
+                      </button>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+{% block inline_javascript %}
+  {% compress js %}
+    <script defer src="{% static 'js/onboarding.js' %}"></script>
+  {% endcompress %}
+{% endblock inline_javascript %}

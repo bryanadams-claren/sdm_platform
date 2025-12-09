@@ -29,6 +29,32 @@ footer {
   text-align: center;
 }
 
+/* Journey Onboarding Styles */
+.journey-progress {
+  height: 8px;
+}
+
+.journey-progress-bar {
+  background-color: var(--journey-primary-color, #0066cc);
+}
+
+.journey-title {
+  color: var(--journey-primary-color, #0066cc);
+}
+
+.journey-btn-primary {
+  background-color: var(--journey-primary-color, #0066cc) !important;
+  border-color: var(--journey-primary-color, #0066cc) !important;
+}
+
+.onboarding-step {
+  display: none;
+}
+
+.onboarding-step.active {
+  display: block;
+}
+
 /* Conversation page */
 .chat-layout {
   height: 100vh;

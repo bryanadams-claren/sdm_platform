@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% load static compress %}
+
 {% block body %}
   <div class="chat-layout">
     <!-- Sidebar -->
@@ -20,8 +22,9 @@
         {% endfor %}
       </div>
       <div class="user-info d-flex align-items-center">
-        <img src="https://via.placeholder.com/40"
+        <img src="{% static 'images/default_avatar.avif' %}"
              class="rounded-circle me-2"
+             height="40"
              alt="User" />
         <div>
           <strong>{{ request.user.name }}</strong>
@@ -80,3 +83,8 @@
     </div>
   </div>
 {% endblock body %}
+{% block user_javascript %}
+  {% compress js %}
+    <script defer src="{% static 'js/chat.js' %}"></script>
+  {% endcompress %}
+{% endblock user_javascript %}

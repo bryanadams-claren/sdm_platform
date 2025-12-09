@@ -25,10 +25,9 @@
     {% block javascript %}
       <script defer
               src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-      <!-- Your stuff: Third-party javascript libraries go here -->
-      {% compress js %}
-        <script defer src="{% static 'js/project.js' %}"></script>
-      {% endcompress %}
+      {% block user_javascript %}
+        <!-- Your stuff: Third-party javascript libraries go here -->
+      {% endblock user_javascript %}
     {% endblock javascript %}
   </head>
   <body>

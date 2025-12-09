@@ -1,0 +1,157 @@
+{
+  "slug": "backpain",
+  "title": "Back Pain Decision Support",
+  "description": "Get personalized guidance on managing your back pain and understanding treatment options.",
+  "subdomain": "backpain",
+  "welcome_message": "<p>Welcome! We're here to help you understand your back pain and explore treatment options.</p><p>This will take about 5-10 minutes. Your answers will help us provide more relevant information.</p>",
+  "is_active": true,
+  "sort_order": 10,
+  "primary_color": "#0066cc",
+  "hero_image": "",
+  "conversation_template_slug": "backpain-sdm",
+  "system_prompt_template": "You are a compassionate healthcare assistant helping a patient with back pain. The patient has reported: Duration: {duration}, Pain Level: {pain_level}, Previous treatments: {treatments_tried}. Location: {pain_location}. Impact on daily activities: {daily_impact}. Provide evidence-based information about treatment options, focusing on shared decision making. Be empathetic and informative.",
+  "onboarding_questions": [
+    {
+      "id": "duration",
+      "type": "choice",
+      "text": "How long have you been experiencing back pain?",
+      "required": true,
+      "options": [
+        {
+          "value": "less_than_6_weeks",
+          "label": "Less than 6 weeks",
+          "description": "Acute back pain"
+        },
+        {
+          "value": "6_weeks_to_3_months",
+          "label": "6 weeks to 3 months",
+          "description": "Subacute back pain"
+        },
+        {
+          "value": "more_than_3_months",
+          "label": "More than 3 months",
+          "description": "Chronic back pain"
+        }
+      ]
+    },
+    {
+      "id": "pain_level",
+      "type": "choice",
+      "text": "How would you rate your pain on average?",
+      "required": true,
+      "options": [
+        {
+          "value": "mild",
+          "label": "Mild (1-3)",
+          "description": "Noticeable but doesn't interfere much with activities"
+        },
+        {
+          "value": "moderate",
+          "label": "Moderate (4-6)",
+          "description": "Interferes with some activities"
+        },
+        {
+          "value": "severe",
+          "label": "Severe (7-10)",
+          "description": "Significantly limits daily activities"
+        }
+      ]
+    },
+    {
+      "id": "pain_location",
+      "type": "choice",
+      "text": "Where is your pain primarily located?",
+      "required": true,
+      "options": [
+        {
+          "value": "lower_back",
+          "label": "Lower back",
+          "description": "Lumbar region"
+        },
+        {
+          "value": "upper_back",
+          "label": "Upper back",
+          "description": "Thoracic region"
+        },
+        {
+          "value": "radiating",
+          "label": "Back pain that radiates to legs",
+          "description": "Possible sciatica"
+        }
+      ]
+    },
+    {
+      "id": "treatments_tried",
+      "type": "multiple",
+      "text": "What treatments have you already tried?",
+      "required": false,
+      "options": [
+        {
+          "value": "none",
+          "label": "None yet",
+          "description": "Just starting to seek treatment"
+        },
+        {
+          "value": "otc_meds",
+          "label": "Over-the-counter pain medication",
+          "description": "Ibuprofen, acetaminophen, etc."
+        },
+        {
+          "value": "physical_therapy",
+          "label": "Physical therapy",
+          "description": "Exercises and stretching"
+        },
+        {
+          "value": "chiropractic",
+          "label": "Chiropractic care",
+          "description": "Spinal adjustments"
+        },
+        {
+          "value": "injections",
+          "label": "Injections",
+          "description": "Cortisone or epidural injections"
+        },
+        {
+          "value": "prescription_meds",
+          "label": "Prescription medications",
+          "description": "Muscle relaxants, stronger pain meds"
+        }
+      ]
+    },
+    {
+      "id": "daily_impact",
+      "type": "choice",
+      "text": "How does your back pain affect your daily activities?",
+      "required": true,
+      "options": [
+        {
+          "value": "minimal",
+          "label": "Minimal impact",
+          "description": "Can do most activities normally"
+        },
+        {
+          "value": "moderate",
+          "label": "Moderate impact",
+          "description": "Need to modify some activities"
+        },
+        {
+          "value": "significant",
+          "label": "Significant impact",
+          "description": "Difficulty with many daily tasks"
+        },
+        {
+          "value": "severe",
+          "label": "Severe impact",
+          "description": "Unable to do most normal activities"
+        }
+      ]
+    },
+    {
+      "id": "goals",
+      "type": "text",
+      "text": "What are your main goals for managing your back pain?",
+      "required": false,
+      "placeholder": "For example: return to work, play with grandchildren, sleep better..."
+    }
+  ]
+}

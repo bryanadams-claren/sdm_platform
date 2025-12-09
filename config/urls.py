@@ -23,7 +23,7 @@ def health_check(request):
 
 urlpatterns = [
     path("health/", health_check, name="health"),
-    path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
+    path("home/", TemplateView.as_view(template_name="pages/home.html"), name="home"),
     path(
         "about/",
         TemplateView.as_view(template_name="pages/about.html"),
@@ -35,8 +35,10 @@ urlpatterns = [
     path("users/", include("sdm_platform.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
+    path("journey/", include("sdm_platform.journeys.urls", namespace="journeys")),
     path("chat/", include("sdm_platform.llmchat.urls")),
     path("documents/", include("sdm_platform.evidence.urls", namespace="evidence")),
+    path("", include("sdm_platform.journeys.urls")),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]

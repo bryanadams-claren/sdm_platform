@@ -23,12 +23,12 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
     default=[  # pyright: ignore[reportArgumentType]
-        "perspicacioushealth.com",
         ".perspicacioushealth.com",
         ".elasticbeanstalk.com",
-        "*",
+        ".backpaindecisionsupport.com",
     ],
 )  # type: ignore[call-overload]
+BASE_DOMAIN = env.str("DJANGO_BASE_DOMAIN", default="backpaindecisionsupport.com")  # pyright: ignore[reportArgumentType]
 
 # DATABASES
 # ------------------------------------------------------------------------------

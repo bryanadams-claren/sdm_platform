@@ -12,6 +12,7 @@ from django.conf import settings
 from django.db import transaction
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
+from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 
 from sdm_platform.llmchat.utils.chat_history import get_chat_history
@@ -38,7 +39,7 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
     with get_postgres_checkpointer() as checkpointer:
         graph = get_compiled_rag_graph(checkpointer)
         reply = graph.invoke(
-            {
+            {  # pyright: ignore[reportArgumentType]
                 "messages": [
                     HumanMessage(content=user_input, metadata={"username": username}),
                 ],
@@ -152,8 +153,17 @@ def ensure_initial_message_in_langchain(conversation_id) -> bool:
                 convo.template.slug,
                 thread_id,
             )
+            initial_messages = []
+
+            # Add system prompt if present
+            if convo.system_prompt:
+                initial_messages.append(SystemMessage(content=convo.system_prompt))
+
+            # Add initial AI message
+            initial_messages.append(AIMessage(content=convo.template.initial_message))
+
             # ... just a plug to demo a video at this time
-            if "treatment-options" in convo.template.slug:
+            if "treatment-options-videos" in convo.template.slug:
                 logger.info(
                     "Adding video clips to treatment-options init conversation!",
                 )

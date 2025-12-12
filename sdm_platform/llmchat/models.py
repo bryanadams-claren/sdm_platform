@@ -42,7 +42,7 @@ class Conversation(models.Model):
     model_name = models.CharField(max_length=100, default="gpt-4")  # which LLM used
 
     def __str__(self):
-        return f"Conversation: {self.user.username} / {self.title} ({self.id})"
+        return f"Conversation: {self.user.email} / {self.title} ({self.id})"
 
 
 @receiver(post_delete, sender=Conversation)

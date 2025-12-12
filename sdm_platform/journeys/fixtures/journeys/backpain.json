@@ -2,7 +2,6 @@
   "slug": "backpain",
   "title": "Back Pain Decision Support",
   "description": "Get personalized guidance on managing your back pain and understanding treatment options.",
-  "subdomain": "backpain",
   "welcome_message": "<p>Welcome! We're here to help you understand your back pain and explore treatment options.</p><p>This will take about 5-10 minutes. Your answers will help us provide more relevant information.</p>",
   "is_active": true,
   "sort_order": 10,

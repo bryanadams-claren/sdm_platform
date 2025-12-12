@@ -2,7 +2,6 @@
   "slug": "kneepain",
   "title": "Knee Pain Decision Support",
   "description": "Understand your knee pain and explore evidence-based treatment options.",
-  "subdomain": "kneepain",
   "welcome_message": "<p>Welcome! Let's talk about your knee pain and what options might work best for you.</p>",
   "is_active": true,
   "sort_order": 20,

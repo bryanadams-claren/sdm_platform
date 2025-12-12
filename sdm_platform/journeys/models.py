@@ -22,10 +22,6 @@ class Journey(models.Model):
     title = models.CharField(max_length=255)  # e.g., "Back Pain Decision Support"
     description = models.TextField(blank=True)
 
-    # Subdomain configuration
-    subdomain = models.CharField(max_length=100, unique=True, null=True, blank=True)
-    # e.g., "backpain" for backpain.corient.com
-
     # Onboarding questions (stored as structured JSON)
     onboarding_questions = models.JSONField(default=list)
 

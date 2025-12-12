@@ -23,7 +23,7 @@ class SubdomainJourneyMiddleware:
 
             # Check if subdomain matches a journey
             try:
-                journey = Journey.objects.get(subdomain=subdomain, is_active=True)
+                journey = Journey.objects.get(slug=subdomain, is_active=True)
                 request.journey_slug = journey.slug
                 request.journey = journey
             except Journey.DoesNotExist:

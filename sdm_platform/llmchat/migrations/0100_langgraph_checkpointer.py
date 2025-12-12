@@ -28,7 +28,7 @@ def teardown_checkpointer(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("llmchat", "0001_initial"),
+       ("llmchat", "0001_initial"),
     ]
 
     operations = [

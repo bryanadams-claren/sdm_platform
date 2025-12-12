@@ -73,5 +73,129 @@
         }
       ]
     }
+  ],
+  "options": [
+    {
+      "slug": "physical-therapy",
+      "title": "Physical Therapy",
+      "description": "A structured program of exercises to strengthen muscles around the knee, improve flexibility, and reduce pain.",
+      "benefits": [
+        "Non-invasive and low risk",
+        "Strengthens supporting muscles",
+        "Improves range of motion",
+        "Teaches exercises for long-term management",
+        "Can delay or prevent need for surgery"
+      ],
+      "drawbacks": [
+        "Requires consistent time commitment",
+        "Results take weeks to months",
+        "May require multiple sessions per week",
+        "Success depends on adherence to home exercises"
+      ],
+      "typical_timeline": "6-12 weeks of sessions",
+      "success_rate": "60-70% report significant improvement",
+      "sort_order": 1
+    },
+    {
+      "slug": "injections",
+      "title": "Knee Injections",
+      "description": "Injections into the knee joint, including corticosteroids for inflammation or hyaluronic acid for lubrication.",
+      "benefits": [
+        "Can provide quick pain relief",
+        "Minimally invasive outpatient procedure",
+        "May enable participation in physical therapy",
+        "Multiple types available for different needs"
+      ],
+      "drawbacks": [
+        "Relief is typically temporary (weeks to months)",
+        "Limited number of steroid injections per year",
+        "Some discomfort during procedure",
+        "Does not repair underlying damage"
+      ],
+      "typical_timeline": "Relief within days, lasting weeks to months",
+      "success_rate": "50-70% experience meaningful relief",
+      "sort_order": 2
+    },
+    {
+      "slug": "medication",
+      "title": "Medication Management",
+      "description": "Using anti-inflammatory medications, pain relievers, or topical treatments to manage knee pain.",
+      "benefits": [
+        "Easy to use",
+        "Can provide quick symptom relief",
+        "Multiple options available",
+        "Can be combined with other treatments"
+      ],
+      "drawbacks": [
+        "Does not address underlying cause",
+        "Potential side effects with long-term use",
+        "May mask symptoms without healing",
+        "Some medications interact with other drugs"
+      ],
+      "typical_timeline": "Ongoing as needed",
+      "success_rate": "Varies by individual and condition",
+      "sort_order": 3
+    },
+    {
+      "slug": "arthroscopy",
+      "title": "Knee Arthroscopy",
+      "description": "Minimally invasive surgery using small incisions and a camera to repair or remove damaged tissue.",
+      "benefits": [
+        "Less invasive than open surgery",
+        "Shorter recovery than knee replacement",
+        "Can repair specific issues (meniscus tears, loose bodies)",
+        "Outpatient procedure"
+      ],
+      "drawbacks": [
+        "Still requires recovery time (2-6 weeks)",
+        "Not effective for arthritis",
+        "Surgical risks apply",
+        "May not provide lasting relief for some conditions"
+      ],
+      "typical_timeline": "Recovery 2-6 weeks",
+      "success_rate": "Depends on condition being treated",
+      "sort_order": 4
+    },
+    {
+      "slug": "knee-replacement",
+      "title": "Knee Replacement Surgery",
+      "description": "Surgical replacement of damaged knee joint surfaces with artificial components.",
+      "benefits": [
+        "Can provide lasting pain relief",
+        "Restores function for severe arthritis",
+        "High success rate for appropriate candidates",
+        "Implants last 15-20+ years"
+      ],
+      "drawbacks": [
+        "Major surgery with significant recovery (3-6 months)",
+        "Surgical risks (infection, blood clots)",
+        "Requires physical therapy afterward",
+        "Some activities may be limited after surgery",
+        "Typically reserved for severe cases"
+      ],
+      "typical_timeline": "Full recovery 3-6 months",
+      "success_rate": "90-95% report significant improvement",
+      "sort_order": 5
+    },
+    {
+      "slug": "lifestyle-modifications",
+      "title": "Lifestyle Modifications",
+      "description": "Changes to daily activities, weight management, and use of supportive devices like braces.",
+      "benefits": [
+        "No medical intervention required",
+        "Weight loss significantly reduces knee stress",
+        "Braces can provide stability and support",
+        "Low risk approach"
+      ],
+      "drawbacks": [
+        "May not be sufficient for severe conditions",
+        "Weight loss takes time and effort",
+        "Activity modifications may be limiting",
+        "Braces can be uncomfortable"
+      ],
+      "typical_timeline": "Ongoing lifestyle changes",
+      "success_rate": "Weight loss of 10% can reduce pain by 50%",
+      "sort_order": 6
+    }
   ]
 }

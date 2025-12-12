@@ -34,6 +34,54 @@
       ]
     },
     {
+      "id": "red_flags",
+      "type": "choice",
+      "text": "Do you have any of the following symptoms?",
+      "required": true,
+      "options": [
+        {
+          "value": "loss_of_bowel_bladder",
+          "label": "Loss of bowel/bladder control",
+          "description": "Loss of bowel/bladder control"
+        },
+        {
+          "value": "weakness_in_legs",
+          "label": "Weakness in my legs -- can't lift either of them",
+          "description": "Weakness in the legs"
+        },
+        {
+          "value": "numbness_pelvic_groin",
+          "label": "Numbness in my pelvic / groin region",
+          "description": "Numbness in the pelvic/groin region"
+        },
+        {
+          "value": "fever",
+          "label": "Current or recent fever",
+          "description": "Fever"
+        },
+        {
+          "value": "weight_loss",
+          "label": "Unexplained weight loss",
+          "description": "Unexplained weight loss"
+        },
+        {
+          "value": "history_of_cancer",
+          "label": "History of cancer",
+          "description": "History of cancer"
+        },
+        {
+          "value": "unexplained_weight_loss",
+          "label": "Unexplained weight loss",
+          "description": "Unexplained weight loss"
+        },
+        {
+          "value": "recent_traumatic_injury",
+          "label": "Recent traumatic injury",
+          "description": "Recent traumatic injury"
+        }
+      ]
+    },
+    {
       "id": "pain_level",
       "type": "choice",
       "text": "How would you rate your pain on average?",
@@ -106,6 +154,11 @@
           "description": "Spinal adjustments"
         },
         {
+          "value": "massage",
+          "label": "Massage therapy",
+          "description": "Relaxation and pain relief"
+        },
+        {
           "value": "injections",
           "label": "Injections",
           "description": "Cortisone or epidural injections"
@@ -118,39 +171,118 @@
       ]
     },
     {
-      "id": "daily_impact",
-      "type": "choice",
-      "text": "How does your back pain affect your daily activities?",
-      "required": true,
-      "options": [
-        {
-          "value": "minimal",
-          "label": "Minimal impact",
-          "description": "Can do most activities normally"
-        },
-        {
-          "value": "moderate",
-          "label": "Moderate impact",
-          "description": "Need to modify some activities"
-        },
-        {
-          "value": "significant",
-          "label": "Significant impact",
-          "description": "Difficulty with many daily tasks"
-        },
-        {
-          "value": "severe",
-          "label": "Severe impact",
-          "description": "Unable to do most normal activities"
-        }
-      ]
-    },
-    {
       "id": "goals",
       "type": "text",
       "text": "What are your main goals for managing your back pain?",
       "required": false,
       "placeholder": "For example: return to work, play with grandchildren, sleep better..."
+    }
+  ],
+  "options": [
+    {
+      "slug": "physical-therapy",
+      "title": "Physical Therapy",
+      "description": "A program of exercises and stretches designed by a physical therapist to strengthen your back, improve flexibility, and reduce pain.",
+      "benefits": [
+        "Non-invasive and low risk",
+        "Addresses root causes of pain",
+        "Teaches long-term self-management skills",
+        "No medication side effects",
+        "Can be done at home after initial training"
+      ],
+      "drawbacks": [
+        "Requires regular time commitment (typically 2-3x per week)",
+        "Results may take 6-12 weeks to become noticeable",
+        "May require co-pay for each session",
+        "Success depends on patient compliance with exercises"
+      ],
+      "typical_timeline": "6-12 weeks of sessions, then ongoing home exercises",
+      "success_rate": "70-80% report significant improvement",
+      "sort_order": 1
+    },
+    {
+      "slug": "medication-management",
+      "title": "Medication Management",
+      "description": "Using over-the-counter or prescription medications to manage pain and inflammation.",
+      "benefits": [
+        "Can provide quick pain relief",
+        "Multiple options available (NSAIDs, muscle relaxants, etc.)",
+        "Easy to use",
+        "Can be combined with other treatments"
+      ],
+      "drawbacks": [
+        "Does not address underlying cause",
+        "Potential side effects (stomach issues, drowsiness)",
+        "Risk of dependency with some medications",
+        "May lose effectiveness over time",
+        "Not a long-term solution on its own"
+      ],
+      "typical_timeline": "Immediate relief, but ongoing management needed",
+      "success_rate": "Varies by medication and individual",
+      "sort_order": 2
+    },
+    {
+      "slug": "spinal-injections",
+      "title": "Spinal Injections",
+      "description": "Corticosteroid injections delivered directly to the affected area of the spine to reduce inflammation and pain.",
+      "benefits": [
+        "Can provide significant pain relief",
+        "Targeted treatment to the problem area",
+        "May allow participation in physical therapy",
+        "Outpatient procedure"
+      ],
+      "drawbacks": [
+        "Temporary relief (typically 3-6 months)",
+        "Invasive procedure with some risks",
+        "Limited number of injections per year",
+        "May not work for everyone",
+        "Does not fix underlying structural issues"
+      ],
+      "typical_timeline": "Relief within days, lasting 3-6 months",
+      "success_rate": "50-70% experience meaningful relief",
+      "sort_order": 3
+    },
+    {
+      "slug": "surgery",
+      "title": "Spine Surgery",
+      "description": "Surgical intervention to address structural problems in the spine, such as herniated discs or spinal stenosis.",
+      "benefits": [
+        "Can provide lasting relief for specific conditions",
+        "Addresses underlying structural problems",
+        "May be the only effective option for some conditions",
+        "Modern techniques are less invasive than before"
+      ],
+      "drawbacks": [
+        "Significant recovery time (weeks to months)",
+        "Surgical risks (infection, complications)",
+        "Not guaranteed to eliminate pain",
+        "May require physical therapy afterward",
+        "Typically reserved for cases that don't respond to other treatments"
+      ],
+      "typical_timeline": "Recovery 6 weeks to 6 months depending on procedure",
+      "success_rate": "70-90% for appropriate candidates",
+      "sort_order": 4
+    },
+    {
+      "slug": "watchful-waiting",
+      "title": "Watchful Waiting / Self-Care",
+      "description": "Monitoring symptoms while using self-care strategies like rest, heat/ice, gentle stretching, and activity modification.",
+      "benefits": [
+        "No medical intervention required",
+        "Many cases of back pain resolve on their own",
+        "Low cost",
+        "No side effects or risks",
+        "Can try other options if pain persists"
+      ],
+      "drawbacks": [
+        "Pain may persist or worsen",
+        "May delay more effective treatment",
+        "Requires patience",
+        "Not appropriate for severe or worsening symptoms"
+      ],
+      "typical_timeline": "4-6 weeks to see if symptoms improve naturally",
+      "success_rate": "80-90% of acute back pain resolves within 6 weeks",
+      "sort_order": 5
     }
   ]
 }

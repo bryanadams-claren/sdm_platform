@@ -7,14 +7,14 @@ from .models import Journey
 
 @admin.register(Journey)
 class JourneyAdmin(admin.ModelAdmin):
-    list_display = ("title", "slug", "subdomain", "is_active", "sort_order")
+    list_display = ("title", "slug", "is_active", "sort_order")
     list_filter = ("is_active",)
-    search_fields = ("title", "slug", "subdomain")
+    search_fields = ("title", "slug")
 
     fieldsets = (
         (
             "Basic Information",
-            {"fields": ("slug", "title", "description", "subdomain")},
+            {"fields": ("slug", "title", "description")},
         ),
         (
             "Onboarding Configuration",

@@ -4,6 +4,7 @@ USE_DOCKER=no
 IPYTHONDIR=/app/.ipython
 DJANGO_SECRET_KEY=)V()sO8YuSH=u*RsDHaX)qu)Ifafm=@vGwq)9N9Hov!0D8aw_-
 DJANGO_ADMIN_URL=admin/
+DJANGO_ADMIN_FORCE_ALLAUTH=True
 
 # Database
 # ------------------------------------------------------------------------------

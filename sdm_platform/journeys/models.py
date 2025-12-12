@@ -72,6 +72,55 @@ class Journey(models.Model):
             return self.system_prompt_template
 
 
+class JourneyOption(models.Model):
+    """
+    Represents a treatment/decision option within a journey.
+    Example: For Back Pain journey - "Physical Therapy", "Surgery", "Medication"
+
+    Benefits/drawbacks are stored as JSON arrays of strings:
+        benefits: ["Non-invasive", "Low risk", "Can be done at home"]
+        drawbacks: ["Requires time commitment", "May take weeks to see results"]
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    journey = models.ForeignKey(
+        Journey, on_delete=models.CASCADE, related_name="options"
+    )
+
+    slug = models.SlugField(max_length=100)  # e.g., "physical-therapy"
+    title = models.CharField(max_length=255)  # e.g., "Physical Therapy"
+    description = models.TextField(blank=True)
+
+    # Structured pros/cons as JSON arrays
+    benefits = models.JSONField(default=list)
+    drawbacks = models.JSONField(default=list)
+
+    # Additional metadata for decision support
+    typical_timeline = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Expected duration or timeline, e.g., '6-12 weeks'",
+    )
+    success_rate = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Typical success rate, e.g., '70-80%'",
+    )
+
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order"]
+        unique_together = [["journey", "slug"]]
+
+    def __str__(self):
+        return f"{self.journey.slug}: {self.title}"
+
+
 class JourneyResponse(models.Model):
     """
     Stores a user's responses to a journey's onboarding questions.
@@ -104,6 +153,16 @@ class JourneyResponse(models.Model):
 
     is_complete = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
+
+    # The option selected/recommended at end of SDM session
+    selected_option = models.ForeignKey(
+        JourneyOption,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="selections",
+    )
+    selected_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

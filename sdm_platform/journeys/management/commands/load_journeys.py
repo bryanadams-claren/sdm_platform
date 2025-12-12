@@ -6,6 +6,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from sdm_platform.journeys.models import Journey
+from sdm_platform.journeys.models import JourneyOption
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,6 @@ class Command(BaseCommand):
                 defaults={
                     "title": data.get("title", slug.title()),
                     "description": data.get("description", ""),
-                    "subdomain": data.get("subdomain"),
                     "welcome_message": data.get("welcome_message", ""),
                     "onboarding_questions": data.get("onboarding_questions", []),
                     "system_prompt_template": data.get("system_prompt_template", ""),
@@ -102,7 +102,6 @@ class Command(BaseCommand):
                 # Update existing journey
                 journey.title = data.get("title", journey.title)
                 journey.description = data.get("description", journey.description)
-                journey.subdomain = data.get("subdomain", journey.subdomain)
                 journey.welcome_message = data.get(
                     "welcome_message", journey.welcome_message
                 )
@@ -127,3 +126,45 @@ class Command(BaseCommand):
                         f"  → Journey '{slug}' already exists (use --force to update)"
                     )
                 )
+
+            # Load options if present (always process on create, or on force_update)
+            options_data = data.get("options", [])
+            if options_data and (created or force_update):
+                self._load_options(journey, options_data, force_update)
+
+    def _load_options(self, journey: Journey, options_data: list, force_update: bool):  # noqa: FBT001
+        """Load or update options for a journey."""
+        if force_update:
+            # Remove existing options that aren't in the new data
+            existing_slugs = {opt["slug"] for opt in options_data if "slug" in opt}
+            deleted_count, _ = journey.options.exclude(slug__in=existing_slugs).delete()
+            if deleted_count:
+                self.stdout.write(f"    Removed {deleted_count} old option(s)")
+
+        for idx, opt_data in enumerate(options_data):
+            opt_slug = opt_data.get("slug")
+            if not opt_slug:
+                self.stdout.write(
+                    self.style.WARNING(f"    Skipping option without slug: {opt_data}")
+                )
+                continue
+
+            option, opt_created = JourneyOption.objects.update_or_create(
+                journey=journey,
+                slug=opt_slug,
+                defaults={
+                    "title": opt_data.get("title", opt_slug.replace("-", " ").title()),
+                    "description": opt_data.get("description", ""),
+                    "benefits": opt_data.get("benefits", []),
+                    "drawbacks": opt_data.get("drawbacks", []),
+                    "typical_timeline": opt_data.get("typical_timeline", ""),
+                    "success_rate": opt_data.get("success_rate", ""),
+                    "sort_order": opt_data.get("sort_order", idx),
+                    "is_active": opt_data.get("is_active", True),
+                },
+            )
+
+            action = "Created" if opt_created else "Updated"
+            self.stdout.write(
+                self.style.SUCCESS(f"    ✓ {action} option: {option.title}")
+            )

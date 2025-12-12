@@ -42,10 +42,10 @@ footer {
   color: var(--journey-primary-color, #0066cc);
 }
 
-.journey-btn-primary {
+/*.journey-btn-primary {
   background-color: var(--journey-primary-color, #0066cc) !important;
   border-color: var(--journey-primary-color, #0066cc) !important;
-}
+}*/
 
 .onboarding-step {
   display: none;

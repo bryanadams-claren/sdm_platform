@@ -35,7 +35,6 @@ urlpatterns = [
     path("users/", include("sdm_platform.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
-    path("journey/", include("sdm_platform.journeys.urls", namespace="journeys")),
     path("chat/", include("sdm_platform.llmchat.urls")),
     path("documents/", include("sdm_platform.evidence.urls", namespace="evidence")),
     path("", include("sdm_platform.journeys.urls")),

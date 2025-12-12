@@ -14,7 +14,13 @@ SECRET_KEY = env.str(
 )
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = [".localhost", ".0.0.0.0", ".127.0.0.1"]
+ALLOWED_HOSTS = [
+    ".localhost",
+    ".0.0.0.0",
+    ".127.0.0.1",
+    ".corient.com",
+]
+
 BASE_DOMAIN = env.str("DJANGO_BASE_DOMAIN", default="localhost")  # pyright: ignore[reportArgumentType]
 
 # CACHES

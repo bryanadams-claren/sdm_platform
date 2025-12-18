@@ -1,13 +1,6 @@
 PREREQUISITES:
-- A VPC to hold everything, w/ public-facing subnets in the region
-- Security group(s)
 - A DNS entry and certificate hosted on Route53
-- An RDS database in the VPC associated w/ the security group(s)
 - An S3 bucket with appropriate permissions
-
-First, create_redis (which uses ElastiCache)
-Then, create_web and create_worker
-Then, deploy_web and deploy_worker
 
 environment name for celery workers need to have "worker" in them
 still need to separate celery beat out from celery workers

@@ -138,14 +138,14 @@ STATIC_URL = f"https://{aws_s3_domain}/static/"
 # https://docs.djangoproject.com/en/dev/ref/settings/#default-from-email
 DEFAULT_FROM_EMAIL = env(
     "DJANGO_DEFAULT_FROM_EMAIL",
-    default="SDM Platform <noreply@perspicacioushealth.com>",  # type: ignore[call-overload]
+    default="Claren Health <noreply@clarenhealth.com>",  # type: ignore[call-overload]
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#server-email
 SERVER_EMAIL = env("DJANGO_SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)  # type: ignore[call-overload]
 # https://docs.djangoproject.com/en/dev/ref/settings/#email-subject-prefix
 EMAIL_SUBJECT_PREFIX = env(
     "DJANGO_EMAIL_SUBJECT_PREFIX",
-    default="[SDM Platform] ",  # type: ignore[call-overload]
+    default="[Claren Health] ",  # type: ignore[call-overload]
 )
 ACCOUNT_EMAIL_SUBJECT_PREFIX = EMAIL_SUBJECT_PREFIX
 
@@ -249,7 +249,7 @@ sentry_sdk.init(
 # -------------------------------------------------------------------------------
 # Tools that generate code samples can use SERVERS to point to the correct domain
 SPECTACULAR_SETTINGS["SERVERS"] = [
-    {"url": "https://perspicacioushealth.com", "description": "Production server"},
+    {"url": "https://clarenhealth.com", "description": "Production server"},
 ]
 # Your stuff...
 # ------------------------------------------------------------------------------

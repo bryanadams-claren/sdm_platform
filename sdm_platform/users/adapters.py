@@ -46,8 +46,8 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 if last_name := data.get("last_name"):
                     user.name += f" {last_name}"
 
-        # Auto-grant staff status to users from perspicacioushealth.com domain
-        if user.email and user.email.lower().endswith("@perspicacioushealth.com"):
+        # Auto-grant staff status to users from clarenhealth.com domain
+        if user.email and user.email.lower().endswith("@clarenhealth.com"):
             user.is_staff = True
             user.is_superuser = True
 

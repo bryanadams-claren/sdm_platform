@@ -163,7 +163,7 @@ readme = "README.md"
 
 license = { text = "Not open source" }
 authors = [
-  { name = "Bryan Adams", email = "bryan.adams@perspicacioushealth.com" },
+  { name = "Bryan Adams", email = "bryan.adams@clarenhealth.com" },
 ]
 requires-python = "==3.13.*"
 dependencies = [

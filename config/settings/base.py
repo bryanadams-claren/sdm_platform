@@ -111,6 +111,7 @@ LOCAL_APPS = [
     "sdm_platform.llmchat",
     "sdm_platform.evidence",
     "sdm_platform.journeys",
+    "sdm_platform.memory",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

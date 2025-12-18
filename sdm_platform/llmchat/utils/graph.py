@@ -3,15 +3,18 @@ import logging
 import environ
 from langchain.chat_models import init_chat_model
 from langchain_chroma import Chroma
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import OpenAIEmbeddings
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.graph import END
 from langgraph.graph import START
 from langgraph.graph import MessagesState
 from langgraph.graph import StateGraph
+from langgraph.store.base import BaseStore
 
 # helper to get a chroma client (reuse your chroma_health.get_chroma_client if present)
 from sdm_platform.evidence.utils.chroma import get_chroma_client
+from sdm_platform.memory.managers import UserProfileManager
 
 logger = logging.getLogger(__name__)
 
@@ -104,17 +107,53 @@ class RagState(MessagesState):
     next_state: str
     turn_citations: list[dict]
     video_clips: list[dict]
+    # User context loaded from memory (name, preferences, etc.)
+    user_context: str
 
 
 # --------------------------
 # Graph builder
 # --------------------------
-def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
+def get_compiled_rag_graph(  # noqa: C901, PLR0915
+    checkpointer: PostgresSaver,
+    store: BaseStore | None = None,
+):
+    """
+    Build the RAG graph with optional memory support.
+
+    Args:
+        checkpointer: PostgresSaver for conversation state
+        store: Optional BaseStore (PostgresStore) for long-term memory.
+               If provided, user context will be loaded from memory.
+    """
     # instantiate model as you did
     model = init_chat_model(CURRENT_MODEL)
 
     # embedder used for query creation
     embeddings = OpenAIEmbeddings()
+
+    def load_user_context(state: RagState, config: RunnableConfig):
+        """
+        Load user profile from memory store and inject into state.
+
+        This runs at the start of each turn to provide user context.
+        Uses the store from the outer closure.
+        """
+        if not store:
+            return {"user_context": ""}
+
+        user_id = config.get("configurable", {}).get("user_id")
+        if not user_id:
+            return {"user_context": ""}
+
+        try:
+            profile = UserProfileManager.get_profile(user_id, store=store)
+            context = UserProfileManager.format_for_prompt(profile)
+        except Exception:
+            logger.exception("Error loading user context for %s", user_id)
+            return {"user_context": ""}
+        else:
+            return {"user_context": context}
 
     def human_turn(state: RagState):
         """
@@ -123,6 +162,8 @@ def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
         :return:
         """
         msgs = state["messages"]
+        user_context = state.get("user_context", "")
+
         try:
             last_msg_content = str(state.get("messages", [])[-1].content)
         except (IndexError, AttributeError) as e:
@@ -132,6 +173,7 @@ def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
                 "next_state": "END",
                 "turn_citations": [],
                 "video_clips": [],
+                "user_context": user_context,
             }
 
         logger.info("human_turn: %s", last_msg_content)
@@ -146,6 +188,7 @@ def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
             "next_state": next_state,
             "turn_citations": [],
             "video_clips": [],
+            "user_context": user_context,
         }
 
     # helper node: retrieve and augment messages with top-K evidence
@@ -156,12 +199,15 @@ def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
         """
         # find last user message content
         msgs = state["messages"]
+        user_context = state.get("user_context", "")
+
         if not msgs:
             return {
                 "messages": msgs,
                 "next_state": "END",
                 "turn_citations": [],
                 "video_clips": [],
+                "user_context": user_context,
             }
 
         # messages are a list of dicts like {"role": "user", "content": "..."}
@@ -181,6 +227,7 @@ def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
                 "next_state": "END",
                 "turn_citations": [],
                 "video_clips": [],
+                "user_context": user_context,
             }
 
         # create chroma client (cloud or local) using your helper
@@ -205,6 +252,7 @@ def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
                 "next_state": "END",
                 "turn_citations": [],
                 "video_clips": [],
+                "user_context": user_context,
             }
 
         ## For reviewing the relevance scores, uncomment the following:
@@ -257,18 +305,24 @@ def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
             )
 
         evidence_block = "\n\n".join(evidence_lines)
-        # Create a system message that provides the retrieved evidence to the LLM as
-        # context.  You can tweak wording to instruct the model how to use evidence
-        # (e.g., "Only cite when necessary").
+
+        # Build system message content with user context if available
+        system_content_parts = []
+
+        if user_context:
+            system_content_parts.append(user_context)
+
+        system_content_parts.append(
+            "RETRIEVED EVIDENCE (for reference when answering). "
+            "Each block includes a short excerpt and a citation (e.g., [1], [2])."
+            f"\n\n{evidence_block}\n\n"
+            "When answering, cite the corresponding evidence blocks"
+            " (e.g., [1], [2]) if used."
+        )
+
         system_msg = {
             "role": "system",
-            "content": (
-                "RETRIEVED EVIDENCE (for reference when answering). "
-                "Each block includes a short excerpt and a citation (e.g., [1], [2])."
-                f"\n\n{evidence_block}\n\n"
-                "When answering, cite the corresponding evidence blocks"
-                " (e.g., [1], [2]) if used."
-            ),
+            "content": "\n\n".join(system_content_parts),
         }
 
         # Prepend the system message so the model sees evidence before other messages.
@@ -279,6 +333,7 @@ def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
             "next_state": "call_model",
             "turn_citations": turn_citations,
             "video_clips": [],
+            "user_context": user_context,
         }
 
     # existing call_model node unchanged
@@ -308,6 +363,7 @@ def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
             "next_state": "human_turn",
             "turn_citations": state.get("turn_citations", []) or [],
             "video_clips": [],  # will need to build these somewhere
+            "user_context": state.get("user_context", ""),
         }
 
     def follow_next_state(state):
@@ -315,11 +371,14 @@ def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
 
     # Build graph
     builder = StateGraph(RagState)
-    builder.add_node(human_turn)
-    builder.add_node(retrieve_and_augment)
-    builder.add_node(call_model)
+    builder.add_node("load_user_context", load_user_context)
+    builder.add_node("human_turn", human_turn)
+    builder.add_node("retrieve_and_augment", retrieve_and_augment)
+    builder.add_node("call_model", call_model)
 
-    builder.add_edge(START, "human_turn")
+    # Start by loading user context, then proceed to human_turn
+    builder.add_edge(START, "load_user_context")
+    builder.add_edge("load_user_context", "human_turn")
     builder.add_conditional_edges(
         "human_turn",
         follow_next_state,
@@ -334,4 +393,5 @@ def get_compiled_rag_graph(checkpointer: PostgresSaver):  # noqa: C901, PLR0915
     builder.add_edge("call_model", END)
 
     # Compile and return graph (checkpointer ensures state persistence)
+    # Store is passed to nodes via closure
     return builder.compile(checkpointer=checkpointer)

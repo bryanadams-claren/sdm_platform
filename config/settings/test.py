@@ -36,3 +36,17 @@ TEMPLATES[0]["OPTIONS"]["debug"] = True  # type: ignore[index]
 MEDIA_URL = "http://media.testserver/"
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+# SOCIAL AUTH
+# ------------------------------------------------------------------------------
+# Override SOCIALACCOUNT_PROVIDERS to use test values
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APPS": [
+            {
+                "client_id": env("GOOGLE_CLIENT_ID", default="test-client-id"),
+                "secret": env("GOOGLE_CLIENT_SECRET", default="test-secret"),
+            },
+        ],
+    },
+}

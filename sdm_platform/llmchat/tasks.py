@@ -1,4 +1,6 @@
-# llmchat/tasks.py
+# ruff: noqa: ERA001
+"""Celery tasks for doing LLM stuff off the hot path"""
+
 import datetime
 import json
 import logging
@@ -14,6 +16,8 @@ from langchain_core.runnables import RunnableConfig
 from sdm_platform.llmchat.utils.format import format_message
 from sdm_platform.llmchat.utils.graph import get_compiled_rag_graph
 from sdm_platform.llmchat.utils.graph import get_postgres_checkpointer
+from sdm_platform.memory.store import get_memory_store
+from sdm_platform.memory.tasks import extract_user_profile_memory
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +32,23 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
     # -- get the thread / conversation id elsewhere
     logger.info("Launching LLM reply for thread name %s", thread_name)
     conversation = Conversation.objects.get(thread_id=thread_name)
-    # ... if we're going to get the instructions for a conversation, here's where
-    config = RunnableConfig(configurable={"thread_id": thread_name})
 
-    with get_postgres_checkpointer() as checkpointer:
-        graph = get_compiled_rag_graph(checkpointer)
+    # Get journey slug if this conversation is linked to a journey
+    # journey_slug = None
+    # if hasattr(conversation, "journey_response") and conversation.journey_response:
+    #     journey_slug = conversation.journey_response.journey.slug
+
+    # Build config with user_id for memory lookup
+    config = RunnableConfig(
+        configurable={
+            "thread_id": thread_name,
+            "user_id": username,  # Used by load_user_context node
+            # "journey_slug": journey_slug,  # For future journey memory
+        },
+    )
+
+    with get_postgres_checkpointer() as checkpointer, get_memory_store() as store:
+        graph = get_compiled_rag_graph(checkpointer, store=store)
         reply = graph.invoke(
             {  # pyright: ignore[reportArgumentType]
                 "messages": [
@@ -40,6 +56,7 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
                 ],
                 "turn_citations": [],
                 "video_clips": [],
+                "user_context": "",  # Will be populated by load_user_context node
             },
             config,
         )
@@ -66,3 +83,11 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
                     "content": json.dumps(reply_dict),
                 },
             )
+
+        recent_messages = [
+            {"role": m.type, "content": m.content}
+            for m in reply["messages"][-10:]
+            if hasattr(m, "type") and hasattr(m, "content")
+        ]
+
+        extract_user_profile_memory.delay(username, recent_messages)  # pyright: ignore[reportCallIssue]

@@ -1,9 +1,10 @@
 # ruff: noqa: PT009, PT027 S106
 # ... ignore the assertion stuff and also the hardcoded passwords
-# pyright: reportGeneralTypeIssues=false, reportOptionalMemberAccess=false
+# pyright: reportGeneralTypeIssues=false, reportArgumentType=false
 # ... the channel stuff
 import datetime
 import json
+from datetime import date
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -18,8 +19,10 @@ from django.test import Client
 from django.test import TestCase
 from django.test import TransactionTestCase
 from django.urls import reverse
+from langchain_core.documents import Document
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
+from langchain_core.runnables import RunnableConfig
 
 from sdm_platform.llmchat.consumers import ChatConsumer
 from sdm_platform.llmchat.consumers import get_useremail_from_scope
@@ -28,6 +31,10 @@ from sdm_platform.llmchat.tasks import send_llm_reply
 from sdm_platform.llmchat.utils.chat_history import get_chat_history
 from sdm_platform.llmchat.utils.format import format_message
 from sdm_platform.llmchat.utils.format import format_thread_id
+from sdm_platform.llmchat.utils.graph import get_compiled_rag_graph
+from sdm_platform.llmchat.utils.graph import get_postgres_checkpointer
+from sdm_platform.memory.managers import UserProfileManager
+from sdm_platform.memory.store import get_memory_store
 from sdm_platform.users.models import User
 
 
@@ -903,13 +910,16 @@ class ChatConsumerTest(TransactionTestCase):
 
         # Get the channel layer directly
         channel_layer = get_channel_layer()
-        await channel_layer.group_send(
-            "chat_test_at_example.com_test_conv",
-            {
-                "type": "chat.reply",
-                "content": json.dumps(bot_message),
-            },
-        )
+        if channel_layer:
+            await channel_layer.group_send(
+                "chat_test_at_example.com_test_conv",
+                {
+                    "type": "chat.reply",
+                    "content": json.dumps(bot_message),
+                },
+            )
+        else:
+            self.assertIsNotNone(channel_layer)
 
         # Receive the bot response
         response = await communicator.receive_json_from()
@@ -951,3 +961,212 @@ class ChatConsumerUtilsTest(TestCase):
         scope = {"user": anonymous}
         result = get_useremail_from_scope(scope)
         self.assertEqual(result, "Anonymous")
+
+
+class GraphWithMemoryTest(TestCase):
+    """Test LangGraph integration with memory module."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.user = User.objects.create_user(
+            email="memory_test@example.com",
+            password="testpass123",
+        )
+
+    @patch("sdm_platform.llmchat.utils.graph.init_chat_model")
+    @patch("sdm_platform.llmchat.utils.graph.get_chroma_client")
+    def test_graph_loads_user_profile_context(self, mock_chroma, mock_init_model):
+        """Test that the graph loads user profile and includes it in context."""
+        # Create a user profile
+        with get_memory_store() as store:
+            UserProfileManager.update_profile(
+                user_id=self.user.email,
+                updates={
+                    "name": "Jane Doe",
+                    "preferred_name": "Jane",
+                    "birthday": date(1985, 3, 15),
+                },
+                store=store,
+                source="user_input",
+            )
+
+        # Mock the LLM to return a proper AIMessage
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content="Hello! How can I help you?")
+        mock_init_model.return_value = mock_model
+
+        # Mock Chroma to avoid actual vector search
+        mock_chroma.return_value = MagicMock()
+
+        # Build the graph with store
+        with get_postgres_checkpointer() as checkpointer, get_memory_store() as store:
+            graph = get_compiled_rag_graph(checkpointer, store=store)
+
+            # Invoke the graph with user_id in config
+            config = RunnableConfig(
+                configurable={
+                    "thread_id": "test_thread_memory",
+                    "user_id": self.user.email,
+                },
+            )
+
+            result = graph.invoke(
+                {
+                    "messages": [
+                        HumanMessage(content="Hello, what's my name?"),
+                    ],
+                    "turn_citations": [],
+                    "video_clips": [],
+                    "user_context": "",
+                },
+                config,
+            )
+
+        # Verify user_context was populated
+        self.assertIn("user_context", result)
+        user_context = result["user_context"]
+
+        # The context should contain the user's preferred name
+        self.assertIn("USER CONTEXT:", user_context)
+        self.assertIn("Jane", user_context)
+        self.assertIn("prefers to be called", user_context)
+
+    @patch("sdm_platform.llmchat.utils.graph.init_chat_model")
+    @patch("sdm_platform.llmchat.utils.graph.get_chroma_client")
+    def test_graph_includes_profile_in_rag_system_message(
+        self, mock_chroma, mock_init_model
+    ):
+        """Test that user profile is included in RAG system message."""
+        # Create a user profile
+        with get_memory_store() as store:
+            UserProfileManager.update_profile(
+                user_id=self.user.email,
+                updates={
+                    "preferred_name": "Bob",
+                    "birthday": date(1990, 6, 20),
+                },
+                store=store,
+            )
+
+        # Mock the LLM to return a proper AIMessage
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content="I can help with that!")
+        mock_init_model.return_value = mock_model
+
+        # Mock Chroma with fake documents to trigger RAG path
+        mock_client = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.name = "test_collection"
+        mock_client.list_collections.return_value = [mock_collection]
+
+        # Mock Chroma vector store to return fake documents
+        mock_vs = MagicMock()
+        fake_doc = Document(
+            page_content="This is test evidence content.",
+            metadata={
+                "document_id": "test_doc_1",
+                "chunk_index": 0,
+                "page": 1,
+            },
+        )
+        # similarity_search_with_score returns (Document, score) tuples
+        # Score of 0.3 is below MAX_DISTANCE_METRIC (0.5) so it will be included
+        mock_vs.similarity_search_with_score.return_value = [(fake_doc, 0.3)]
+
+        # Patch Chroma constructor to return our mock
+        mock_chroma.return_value = mock_client
+
+        with patch("sdm_platform.llmchat.utils.graph.Chroma", return_value=mock_vs):
+            # Build the graph
+            with (
+                get_postgres_checkpointer() as checkpointer,
+                get_memory_store() as store,
+            ):
+                graph = get_compiled_rag_graph(checkpointer, store=store)
+
+                config = RunnableConfig(
+                    configurable={
+                        "thread_id": "test_thread_rag_memory",
+                        "user_id": self.user.email,
+                    },
+                )
+
+                # Send a message with @llm prefix to trigger RAG
+                _ = graph.invoke(
+                    {
+                        "messages": [
+                            HumanMessage(content="@llm What treatment options exist?"),
+                        ],
+                        "turn_citations": [],
+                        "video_clips": [],
+                        "user_context": "",
+                    },
+                    config,
+                )
+
+            # The model should have been invoked with messages
+            self.assertTrue(mock_model.invoke.called)
+
+            # Get the messages that were passed to the model
+            call_args = mock_model.invoke.call_args
+            messages = call_args[0][0]  # First positional argument
+
+            # Find the system message (should be first)
+            system_message = None
+            for msg in messages:
+                if msg.type == "system":
+                    system_message = msg
+                    break
+            # Verify system message contains user context
+            self.assertIsNotNone(system_message)
+            if system_message:
+                self.assertIn("USER CONTEXT:", system_message.content)
+                self.assertIn("Bob", system_message.content)
+                self.assertIn("June 20", system_message.content)
+
+    @patch("sdm_platform.llmchat.utils.graph.init_chat_model")
+    @patch("sdm_platform.llmchat.utils.graph.get_chroma_client")
+    def test_graph_works_without_profile(self, mock_chroma, mock_init_model):
+        """Test that the graph works normally when no profile exists."""
+        # Mock the LLM to return a proper AIMessage
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content="Hello!")
+        mock_init_model.return_value = mock_model
+
+        # Mock Chroma to return empty collections (no RAG)
+        mock_client = MagicMock()
+        mock_client.list_collections.return_value = []
+        mock_chroma.return_value = mock_client
+
+        # Build the graph
+        with get_postgres_checkpointer() as checkpointer, get_memory_store() as store:
+            graph = get_compiled_rag_graph(checkpointer, store=store)
+
+            config = RunnableConfig(
+                configurable={
+                    "thread_id": "test_thread_no_memory",
+                    "user_id": "nonexistent@example.com",
+                },
+            )
+
+            # Should not raise an exception
+            # Use @llm prefix to trigger model invocation
+            result = graph.invoke(
+                {
+                    "messages": [
+                        HumanMessage(content="@llm Hello"),
+                    ],
+                    "turn_citations": [],
+                    "video_clips": [],
+                    "user_context": "",
+                },
+                config,
+            )
+
+        # Should have empty user_context (no profile exists)
+        self.assertEqual(result["user_context"], "")
+
+        # Should still process normally and return messages
+        # Messages: original human message + AI response
+        self.assertGreaterEqual(len(result["messages"]), 1)
+        self.assertTrue(mock_model.invoke.called)

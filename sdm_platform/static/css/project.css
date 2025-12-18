@@ -1,11 +1,22 @@
 /* These styles are generated from project.scss. */
 
 /* -- home page styles -- */
-body, html {
+body,
+html {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 400;
   height: 100%;
   margin: 0;
-  overflow: hidden;
   background: #f7f7f7;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 600;
 }
 .navbar {
   border-bottom: 1px solid #ddd;
@@ -27,6 +38,135 @@ footer {
   border-top: 1px solid #ddd;
   padding: 20px;
   text-align: center;
+}
+
+/* Modern home page styles */
+
+/* Hero gradient section */
+/* Modern home page hero with neutral gradient */
+.hero-gradient {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  color: white;
+  padding: 120px 0 80px 0 !important;
+  border: none !important;
+}
+
+.hero-gradient h1 {
+  font-size: 4rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.02em;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.hero-gradient .lead {
+  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.95);
+  max-width: 800px;
+  margin: 0 auto;
+  animation: fadeInUp 1s ease-out;
+}
+
+/* Section headings */
+.section-heading {
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Modern cards with hover effect */
+.modern-card {
+  transition: all 0.3s ease;
+  border-radius: 16px !important;
+}
+
+.modern-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12) !important;
+}
+
+.modern-card h5 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.modern-card p {
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.card-icon i {
+  transition: transform 0.3s ease;
+}
+
+.gradient-icon {
+  font-size: 3rem;
+  color: #34495e;
+}
+.modern-card:hover .card-icon i {
+  transform: scale(1.1);
+}
+
+/* Modern form styling */
+.modern-form .form-label {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.modern-form .form-control {
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+}
+
+.modern-form .form-control:focus {
+  border-color: #2c3e50;
+  box-shadow: 0 0 0 0.2rem rgba(44, 62, 80, 0.15);
+}
+
+.modern-btn {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  border: none;
+  border-radius: 12px;
+  padding: 14px 28px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.modern-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(44, 62, 80, 0.4);
+  background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero-gradient h1 {
+    font-size: 2.75rem;
+  }
+
+  .hero-gradient .lead {
+    font-size: 1.35rem;
+  }
+
+  .section-heading {
+    font-size: 2rem;
+  }
 }
 
 /* Journey Onboarding Styles */
@@ -140,11 +280,11 @@ footer {
   background: #e9ecef;
 }
 .message.peer .msg-text {
-  margin-right: auto;               /* left-align like bot messages */
-  background: #e8f5e9;              /* soft green background */
-  color: #0f5132;                   /* readable dark green text */
-  border: 1px solid #cfe3d4;        /* subtle border */
-  border-left: 4px solid #198754;   /* accent stripe for quick visual parsing */
+  margin-right: auto; /* left-align like bot messages */
+  background: #e8f5e9; /* soft green background */
+  color: #0f5132; /* readable dark green text */
+  border: 1px solid #cfe3d4; /* subtle border */
+  border-left: 4px solid #198754; /* accent stripe for quick visual parsing */
 }
 
 /* Optional: author label shown above a bubble (usable for any role) */
@@ -162,11 +302,10 @@ footer {
   font-weight: 600;
 }
 
-
 /* Optional: if you render avatars next to messages */
 .message.peer .avatar {
   border-radius: 50%;
-  box-shadow: 0 0 0 2px #cfe3d4;    /* subtle ring matching the peer palette */
+  box-shadow: 0 0 0 2px #cfe3d4; /* subtle ring matching the peer palette */
 }
 
 .typing-dots {
@@ -183,12 +322,24 @@ footer {
   border-radius: 50%;
   animation: blink 1.4s infinite both;
 }
-.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 @keyframes blink {
-  0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
-  40% { transform: scale(1); opacity: 1; }
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .msg-text {
@@ -198,8 +349,14 @@ footer {
 }
 
 /* Citation link should be visible inside colored bubbles (inherit color) */
-.msg-text a { color: inherit; text-decoration: underline; }
-.msg-text a.citation-link { font-weight:600; margin:0 2px; }
+.msg-text a {
+  color: inherit;
+  text-decoration: underline;
+}
+.msg-text a.citation-link {
+  font-weight: 600;
+  margin: 0 2px;
+}
 
 .timestamp {
   display: block;
@@ -208,14 +365,15 @@ footer {
   margin-top: 4px;
   text-align: right;
 }
-.message.user .timestamp { color: #ddd; }
+.message.user .timestamp {
+  color: #ddd;
+}
 
 .chat-input {
   border-top: 1px solid #ddd;
   padding: 10px;
   background: #fff;
 }
-
 
 .alert-debug {
   color: black;

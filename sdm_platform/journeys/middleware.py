@@ -11,7 +11,7 @@ class SubdomainJourneyMiddleware:
 
     def __init__(self, get_response):
         self.get_response = get_response
-        self.base_domain = getattr(settings, "BASE_DOMAIN", "corient.com")
+        self.base_domain = getattr(settings, "BASE_DOMAIN", "clarenhealth.com")
 
     def __call__(self, request):
         # Extract subdomain

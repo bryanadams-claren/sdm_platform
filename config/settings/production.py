@@ -29,7 +29,7 @@ ALLOWED_HOSTS = env.list(
         ".backpaindecisionsupport.com",
     ],
 )  # type: ignore[call-overload]
-BASE_DOMAIN = env.str("DJANGO_BASE_DOMAIN", default="backpaindecisionsupport.com")  # pyright: ignore[reportArgumentType]
+BASE_DOMAIN = env.str("DJANGO_BASE_DOMAIN", default="clarenhealth.com")  # pyright: ignore[reportArgumentType]
 
 # DATABASES
 # ------------------------------------------------------------------------------

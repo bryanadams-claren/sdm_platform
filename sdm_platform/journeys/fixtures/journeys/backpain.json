@@ -78,6 +78,11 @@
           "value": "recent_traumatic_injury",
           "label": "Recent traumatic injury",
           "description": "Recent traumatic injury"
+        },
+        {
+          "value": "no_red_flags",
+          "label": "None",
+          "description": "None of the above listed conditions"
         }
       ]
     },

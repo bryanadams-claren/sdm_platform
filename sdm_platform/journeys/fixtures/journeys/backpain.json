@@ -289,5 +289,106 @@
       "success_rate": "80-90% of acute back pain resolves within 6 weeks",
       "sort_order": 5
     }
+  ],
+  "conversation_points": [
+    {
+      "slug": "treatment-goals",
+      "title": "Discuss your treatment goals",
+      "description": "Understanding what the patient hopes to achieve with treatment",
+      "system_message_template": "I'd like to understand your goals for treatment. Are there specific activities you've been unable to do because of your back pain? What would you most like to be able to do again?",
+      "semantic_keywords": [
+        "goals",
+        "hope to achieve",
+        "activities I miss",
+        "what I want",
+        "return to",
+        "get back to",
+        "able to do",
+        "important to me"
+      ],
+      "confidence_threshold": 0.7,
+      "sort_order": 1,
+      "is_active": true
+    },
+    {
+      "slug": "treatment-options",
+      "title": "Understand treatment options",
+      "description": "Discussing available treatment approaches and their characteristics",
+      "system_message_template": "Let's explore the treatment options available for your back pain. Would you like to learn about the different approaches we could consider, including their benefits and potential drawbacks?",
+      "semantic_keywords": [
+        "treatment options",
+        "surgery",
+        "physical therapy",
+        "medication",
+        "what are my options",
+        "injections",
+        "procedures",
+        "what can be done"
+      ],
+      "confidence_threshold": 0.7,
+      "sort_order": 2,
+      "is_active": true
+    },
+    {
+      "slug": "preferences-values",
+      "title": "Analyze your preferences and values",
+      "description": "Understanding patient values, preferences, and what matters most",
+      "system_message_template": "Everyone has different preferences when it comes to treatment. What matters most to you? For example, some people prefer to avoid surgery if possible, while others want the fastest path to recovery. Some prioritize avoiding medications, while others are comfortable with them if they provide relief.",
+      "semantic_keywords": [
+        "prefer",
+        "important to me",
+        "values",
+        "matters most",
+        "priorities",
+        "rather",
+        "would like to avoid",
+        "comfortable with",
+        "willing to"
+      ],
+      "confidence_threshold": 0.7,
+      "sort_order": 3,
+      "is_active": true
+    },
+    {
+      "slug": "demographics-context",
+      "title": "Understand your background and context",
+      "description": "Learning about demographics and life context that may influence treatment decisions",
+      "system_message_template": "To help me provide the most relevant information, could you tell me a bit about yourself? For example, your age, occupation, and typical daily activities? This helps me understand what matters most in your situation.",
+      "semantic_keywords": [
+        "age",
+        "years old",
+        "occupation",
+        "job",
+        "work",
+        "daily activities",
+        "family",
+        "responsibilities",
+        "lifestyle"
+      ],
+      "confidence_threshold": 0.7,
+      "sort_order": 4,
+      "is_active": true
+    },
+    {
+      "slug": "concerns-barriers",
+      "title": "Discuss concerns and barriers",
+      "description": "Understanding patient concerns about treatments and potential barriers",
+      "system_message_template": "Do you have any concerns or worries about the different treatment options? Or any practical considerations like cost, time commitment, or access to care that we should keep in mind?",
+      "semantic_keywords": [
+        "concerned",
+        "worried",
+        "afraid",
+        "cost",
+        "expensive",
+        "afford",
+        "time",
+        "work schedule",
+        "transportation",
+        "insurance"
+      ],
+      "confidence_threshold": 0.7,
+      "sort_order": 5,
+      "is_active": true
+    }
   ]
 }

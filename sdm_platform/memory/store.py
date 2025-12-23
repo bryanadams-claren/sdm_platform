@@ -55,22 +55,25 @@ def get_user_namespace(
     user_id: str, memory_type: str, **kwargs: str
 ) -> tuple[str, ...]:
     """
-    Build namespace tuple for a given memory type.
+        Build namespace tuple for a given memory type.
 
-    Args:
-        user_id: User identifier (typically email)
-        memory_type: One of 'profile', 'journey', 'insights'
-        **kwargs: Additional namespace components (e.g., journey_slug)
+        Args:
+            user_id: User identifier (typically email)
+            memory_type: One of 'profile', 'journey', 'insights', 'conversation_points'
+            **kwargs: Additional namespace components (e.g., journey_slug)
 
-    Returns:
-        Tuple namespace for use with store.get/put/search
+        Returns:
+            Tuple namespace for use with store.get/put/search
 
-    Examples:
-        >>> get_user_namespace("user@example.com", "profile")
-        ("memory", "users", "a1b2c3d4e5f6g7h8", "profile")
+        Examples:
+    >>> get_user_namespace("user@ex.com", "profile")
+    ("memory", "users", "a1b2c3d4e5f6g7h8", "profile")
 
-        >>> get_user_namespace("user@example.com", "journey", journey_slug="backpain")
-        ("memory", "users", "a1b2c3d4e5f6g7h8", "journeys", "backpain")
+    >>> get_user_namespace("user@ex.com", "journey", journey_slug="backpain")
+    ("memory", "users", "a1b2c3d4e5f6g7h8", "journeys", "backpain")
+
+    >>> get_user_namespace("user@ex.com","conversation_points",journey_slug="backpain")
+    ("memory", "users", "a1b2c3d4e5f6g7h8", "conversation_points", "backpain")
     """
     # Encode user_id to avoid periods in namespace
     encoded_user_id = _encode_user_id(user_id)
@@ -85,6 +88,13 @@ def get_user_namespace(
             kwargs.get("journey_slug", ""),
         ),
         "insights": ("memory", "users", encoded_user_id, "insights"),
+        "conversation_points": (
+            "memory",
+            "users",
+            encoded_user_id,
+            "conversation_points",
+            kwargs.get("journey_slug", ""),
+        ),
     }
     return namespaces.get(
         memory_type, ("memory", "users", encoded_user_id, memory_type)

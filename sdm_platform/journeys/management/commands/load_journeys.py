@@ -7,12 +7,13 @@ from django.db import transaction
 
 from sdm_platform.journeys.models import Journey
 from sdm_platform.journeys.models import JourneyOption
+from sdm_platform.memory.models import ConversationPoint
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Load journey configurations from JSON files into the database"
+    help = "Load journeys and conversation points from JSON files into the database"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -31,11 +32,17 @@ class Command(BaseCommand):
             action="store_true",
             help="Force update existing journeys (otherwise only creates new ones)",
         )
+        parser.add_argument(
+            "--skip-conversation-points",
+            action="store_true",
+            help="Skip loading conversation points",
+        )
 
     def handle(self, *args, **options):
         journey_slug = options.get("journey")
         fixtures_dir = Path(options.get("dir", ""))
         force_update = options.get("force", False)
+        skip_conversation_points = options.get("skip_conversation_points", False)
 
         if not fixtures_dir.exists():
             self.stdout.write(self.style.ERROR(f"Directory not found: {fixtures_dir}"))
@@ -45,7 +52,7 @@ class Command(BaseCommand):
         if journey_slug:
             json_files = [fixtures_dir / f"{journey_slug}.json"]
         else:
-            json_files = list(fixtures_dir.glob("*.json"))
+            json_files = sorted(fixtures_dir.glob("*.json"))
 
         if not json_files:
             self.stdout.write(self.style.WARNING("No journey JSON files found"))
@@ -53,20 +60,32 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Found {len(json_files)} journey file(s) to process\n")
 
+        # Process each journey file
         for json_file in json_files:
             if not json_file.exists():
                 self.stdout.write(self.style.ERROR(f"File not found: {json_file}"))
                 continue
 
             try:
-                self.load_journey_from_file(json_file, force_update)
+                self.load_journey_from_file(
+                    json_file,
+                    force_update,
+                    skip_conversation_points,
+                )
             except Exception as e:
                 self.stdout.write(
                     self.style.ERROR(f"Error loading {json_file.name}: {e}")
                 )
                 logger.exception("Failed to load journey from file %s", json_file)
 
-    def load_journey_from_file(self, json_file: Path, force_update: bool):  # noqa: FBT001
+        self.stdout.write(self.style.SUCCESS("\n✓ Journey loading complete"))
+
+    def load_journey_from_file(
+        self,
+        json_file: Path,
+        force_update: bool,  # noqa: FBT001
+        skip_conversation_points: bool,  # noqa: FBT001
+    ):
         """Load or update a single journey from a JSON file."""
         self.stdout.write(f"Processing: {json_file.name}")
 
@@ -79,6 +98,7 @@ class Command(BaseCommand):
             raise ValueError(errmsg)
 
         with transaction.atomic():
+            # Step 1: Load the journey
             journey, created = Journey.objects.get_or_create(
                 slug=slug,
                 defaults={
@@ -127,12 +147,27 @@ class Command(BaseCommand):
                     )
                 )
 
-            # Load options if present (always process on create, or on force_update)
+            # Step 2: Load options (always process on create, or on force_update)
             options_data = data.get("options", [])
             if options_data and (created or force_update):
                 self._load_options(journey, options_data, force_update)
 
-    def _load_options(self, journey: Journey, options_data: list, force_update: bool):  # noqa: FBT001
+            # Step 3: Load conversation points if present
+            if not skip_conversation_points:
+                conversation_points_data = data.get("conversation_points", [])
+                if conversation_points_data and (created or force_update):
+                    self._load_conversation_points(
+                        journey,
+                        conversation_points_data,
+                        force_update,
+                    )
+
+    def _load_options(
+        self,
+        journey: Journey,
+        options_data: list,
+        force_update: bool,  # noqa: FBT001
+    ):
         """Load or update options for a journey."""
         if force_update:
             # Remove existing options that aren't in the new data
@@ -167,4 +202,56 @@ class Command(BaseCommand):
             action = "Created" if opt_created else "Updated"
             self.stdout.write(
                 self.style.SUCCESS(f"    ✓ {action} option: {option.title}")
+            )
+
+    def _load_conversation_points(
+        self,
+        journey: Journey,
+        conversation_points_data: list,
+        force_update: bool,  # noqa: FBT001
+    ):
+        """Load or update conversation points for a journey."""
+
+        if force_update:
+            # Remove existing conversation points that aren't in the new data
+            existing_slugs = {
+                cp["slug"] for cp in conversation_points_data if "slug" in cp
+            }
+            deleted_count, _ = journey.conversation_points.exclude(
+                slug__in=existing_slugs
+            ).delete()
+            if deleted_count:
+                self.stdout.write(
+                    f"    Removed {deleted_count} old conversation point(s)"
+                )
+
+        for idx, cp_data in enumerate(conversation_points_data):
+            cp_slug = cp_data.get("slug")
+            if not cp_slug:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"    Skipping conversation point without slug: {cp_data}"
+                    )
+                )
+                continue
+
+            cp, cp_created = ConversationPoint.objects.update_or_create(
+                journey=journey,
+                slug=cp_slug,
+                defaults={
+                    "title": cp_data.get("title", cp_slug.replace("-", " ").title()),
+                    "description": cp_data.get("description", ""),
+                    "system_message_template": cp_data.get(
+                        "system_message_template", ""
+                    ),
+                    "semantic_keywords": cp_data.get("semantic_keywords", []),
+                    "confidence_threshold": cp_data.get("confidence_threshold", 0.7),
+                    "sort_order": cp_data.get("sort_order", idx),
+                    "is_active": cp_data.get("is_active", True),
+                },
+            )
+
+            action = "Created" if cp_created else "Updated"
+            self.stdout.write(
+                self.style.SUCCESS(f"    ✓ {action} conversation point: {cp.title}")
             )

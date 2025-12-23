@@ -1,8 +1,15 @@
 import uuid
+from typing import TYPE_CHECKING
 
 from django.db import models
 
 from sdm_platform.users.models import User
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
+    from sdm_platform.journeys.models import JourneyOption
+    from sdm_platform.memory.models import ConversationPoint
 
 
 class Journey(models.Model):
@@ -16,6 +23,12 @@ class Journey(models.Model):
           "options": [...]}]
 
     """
+
+    # Type hints for reverse relations (for type checkers)
+    if TYPE_CHECKING:
+        options: "QuerySet[JourneyOption]"
+        conversation_points: "QuerySet[ConversationPoint]"
+        responses: "QuerySet[JourneyResponse]"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.SlugField(max_length=100, unique=True)  # e.g., "backpain"

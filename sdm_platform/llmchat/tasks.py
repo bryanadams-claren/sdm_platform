@@ -46,7 +46,6 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
             # "journey_slug": journey_slug,  # For future journey memory
         },
     )
-
     with get_postgres_checkpointer() as checkpointer, get_memory_store() as store:
         graph = get_compiled_rag_graph(checkpointer, store=store)
         reply = graph.invoke(
@@ -54,9 +53,9 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
                 "messages": [
                     HumanMessage(content=user_input, metadata={"username": username}),
                 ],
-                "turn_citations": [],
-                "video_clips": [],
                 "user_context": "",  # Will be populated by load_user_context node
+                "system_prompt": conversation.system_prompt,
+                "turn_citations": [],
             },
             config,
         )
@@ -72,7 +71,6 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
             reply["messages"][-1].content,
             datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)),
             reply["turn_citations"],
-            reply["video_clips"],
         )
 
         if channel_layer := get_channel_layer():

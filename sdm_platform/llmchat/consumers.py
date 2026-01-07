@@ -73,7 +73,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     message=event["message"],
                     timestamp=datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)),
                     citations=[],
-                    video_clips=[],
                 ),
             ),
         )

@@ -55,6 +55,14 @@ def conversation(request, conv_id=None):
         )
 
 
+def _get_name(msg):
+    mtype = msg.get("type", None)
+    if mtype == "ai":
+        return settings.AI_ASSISTANT_NAME
+    # ...otherwise ...
+    return msg.get("data", {}).get("metadata", {}).get("username", "UnknownName")
+
+
 @login_required
 def history(request, conv_id):
     thread_id = f"chat_{request.user}_{conv_id}".replace("@", "_at_")
@@ -72,18 +80,13 @@ def history(request, conv_id):
             msg_list += [
                 format_message(
                     msg.get("type", None),
-                    settings.AI_ASSISTANT_NAME
-                    if msg.get("type", None) == "ai"
-                    else msg.get("data", {})
-                    .get("metadata", {})
-                    .get("username", "UnknownName"),
+                    _get_name(msg),
                     msg.get("data", {}).get("content", ""),
                     turn.get(
                         "created_at",
                         datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)),
                     ),
                     turn.get("turn_citations", []),
-                    turn.get("video_clips", []),
                 )
                 for msg in turn["new_messages"]
                 if msg.get("type", None) in ["human", "ai"]

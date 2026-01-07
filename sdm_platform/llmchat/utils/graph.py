@@ -93,22 +93,80 @@ def _retrieve_top_k_from_collections(  # noqa: PLR0913
     return candidates_sorted[:max_total_k]
 
 
+def _build_system_message_and_continue(
+    msgs: list,
+    user_context: str,
+    system_prompt: str,
+    turn_citations: list,
+    evidence_lines: list[str] | None = None,
+) -> dict:
+    """
+    Helper to build system message from context and optional evidence.
+
+    Args:
+        msgs: Current message history
+        user_context: User profile context (name, etc.)
+        system_prompt: Conversation system prompt (journey responses, etc.)
+        turn_citations: List of citation dicts
+        evidence_lines: Optional list of evidence strings
+
+    Returns:
+        State dict with augmented messages
+    """
+    system_content_parts = []
+
+    # Add conversation context (journey info)
+    if system_prompt:
+        system_content_parts.append(system_prompt)
+
+    # Add user context (personal info)
+    if user_context:
+        system_content_parts.append(user_context)
+
+    # Add evidence if available
+    if evidence_lines:
+        evidence_block = "\n\n".join(evidence_lines)
+        system_content_parts.append(
+            "RETRIEVED EVIDENCE (for reference when answering). "
+            "Each block includes a short excerpt and a citation (e.g., [1], [2])."
+            f"\n\n{evidence_block}\n\n"
+            "When answering, cite the corresponding evidence blocks"
+            " (e.g., [1], [2]) if used."
+        )
+
+    # Build and prepend system message if we have any context
+    if system_content_parts:
+        system_msg = {"role": "system", "content": "\n\n".join(system_content_parts)}
+        augmented_messages = [system_msg, *msgs]
+    else:
+        augmented_messages = msgs
+
+    return {
+        "messages": augmented_messages,
+        "next_state": "call_model",
+        "turn_citations": turn_citations,
+        "user_context": user_context,
+        "system_prompt": system_prompt,
+    }
+
+
 # --------------------------
 # State model
 # --------------------------
-class RagState(MessagesState):
+class SdmState(MessagesState):
     """
     State model used by StateGraph. Persist turn_citations so messages can have links
-    to evidence, and persist video_clips so messages can have links to videos (not yet
-    implemented here).
+    to evidence.
     """
 
     # persisted compact citations for the last assistant reply in this state snapshot
     next_state: str
-    turn_citations: list[dict]
-    video_clips: list[dict]
     # User context loaded from memory (name, preferences, etc.)
     user_context: str
+    # System prompt from conversation (journey context, etc.)
+    system_prompt: str
+    # Citations from the RAG step
+    turn_citations: list[dict]
 
 
 # --------------------------
@@ -132,30 +190,37 @@ def get_compiled_rag_graph(  # noqa: C901, PLR0915
     # embedder used for query creation
     embeddings = OpenAIEmbeddings()
 
-    def load_user_context(state: RagState, config: RunnableConfig):
+    def load_context(state: SdmState, config: RunnableConfig):
         """
-        Load user profile from memory store and inject into state.
+        Load all context needed for the conversation:
+        - User profile from memory store (name, preferences, etc.)
+        - Conversation system prompt (journey responses, etc.)
 
-        This runs at the start of each turn to provide user context.
-        Uses the store from the outer closure.
+        This runs at the start of each turn to provide full context.
         """
-        if not store:
-            return {"user_context": ""}
+        user_context = ""
+        system_prompt = ""
 
-        user_id = config.get("configurable", {}).get("user_id")
-        if not user_id:
-            return {"user_context": ""}
+        # Load user profile from memory store
+        if store:
+            user_id = config.get("configurable", {}).get("user_id")
+            if user_id:
+                try:
+                    profile = UserProfileManager.get_profile(user_id, store=store)
+                    user_context = UserProfileManager.format_for_prompt(profile)
+                except Exception:
+                    logger.exception("Error loading user context for %s", user_id)
 
-        try:
-            profile = UserProfileManager.get_profile(user_id, store=store)
-            context = UserProfileManager.format_for_prompt(profile)
-        except Exception:
-            logger.exception("Error loading user context for %s", user_id)
-            return {"user_context": ""}
-        else:
-            return {"user_context": context}
+        # Load conversation system prompt (from state if provided)
+        # This comes from the initial invoke call in tasks.py
+        system_prompt = state.get("system_prompt", "")
 
-    def human_turn(state: RagState):
+        return {
+            "user_context": user_context,
+            "system_prompt": system_prompt,
+        }
+
+    def human_turn(state: SdmState):
         """
         A human is speaking, clankers be quiet until you're called upon
         :param state:
@@ -163,6 +228,7 @@ def get_compiled_rag_graph(  # noqa: C901, PLR0915
         """
         msgs = state["messages"]
         user_context = state.get("user_context", "")
+        system_prompt = state.get("system_prompt", "")
 
         try:
             last_msg_content = str(state.get("messages", [])[-1].content)
@@ -171,9 +237,9 @@ def get_compiled_rag_graph(  # noqa: C901, PLR0915
             return {
                 "messages": msgs,
                 "next_state": "END",
-                "turn_citations": [],
-                "video_clips": [],
                 "user_context": user_context,
+                "system_prompt": system_prompt,
+                "turn_citations": [],
             }
 
         logger.info("human_turn: %s", last_msg_content)
@@ -186,33 +252,22 @@ def get_compiled_rag_graph(  # noqa: C901, PLR0915
         return {
             "messages": msgs,
             "next_state": next_state,
-            "turn_citations": [],
-            "video_clips": [],
             "user_context": user_context,
+            "system_prompt": system_prompt,
+            "turn_citations": [],
         }
 
-    # helper node: retrieve and augment messages with top-K evidence
-    def retrieve_and_augment(state: RagState):
+    def retrieve_and_augment(state: SdmState):
         """
-        Look at state["messages"], find last user message, retrieve top-k
-        evidence from Chroma, and return {'messages': augmented_messages}.
+        Retrieve evidence from Chroma and augment messages.
+        Context (user_context, system_prompt) should already be loaded.
         """
-        # find last user message content
         msgs = state["messages"]
         user_context = state.get("user_context", "")
+        system_prompt = state.get("system_prompt", "")
 
-        if not msgs:
-            return {
-                "messages": msgs,
-                "next_state": "END",
-                "turn_citations": [],
-                "video_clips": [],
-                "user_context": user_context,
-            }
-
-        # messages are a list of dicts like {"role": "user", "content": "..."}
+        # Find last user message
         last_user_text = None
-        # iterate from end to find most recent user message
         for m in reversed(msgs):
             role = get_thing(m, "type")
             content = get_thing(m, "content")
@@ -221,21 +276,14 @@ def get_compiled_rag_graph(  # noqa: C901, PLR0915
                 break
 
         if not last_user_text:
-            # nothing to retrieve for
-            return {
-                "messages": msgs,
-                "next_state": "END",
-                "turn_citations": [],
-                "video_clips": [],
-                "user_context": user_context,
-            }
+            # No user message to process, just add context and continue
+            return _build_system_message_and_continue(
+                msgs, user_context, system_prompt, []
+            )
 
-        # create chroma client (cloud or local) using your helper
+        # Retrieve evidence from Chroma
         client = get_chroma_client()
-        # pick collections to search (limit to avoid huge fan-out)
         collections = _get_collections_to_search(client, limit=50)
-
-        # retrieve top candidates across collections (configurable)
         candidates = _retrieve_top_k_from_collections(
             client=client,
             query=last_user_text,
@@ -245,100 +293,48 @@ def get_compiled_rag_graph(  # noqa: C901, PLR0915
             max_total_k=5,
         )
 
-        if not candidates:
-            # nothing found; simply return original messages
-            return {
-                "messages": msgs,
-                "next_state": "END",
-                "turn_citations": [],
-                "video_clips": [],
-                "user_context": user_context,
-            }
-
-        ## For reviewing the relevance scores, uncomment the following:
-        ## e.g., relevance_score = sum([sc if sc else 0. for _, sc, _ in candidates])
-        ## consider: f"Total score is {relevance_score}; retrieved {len(candidates)}
-        #              candidates from {len(collections)} collections.")
-
-        # Build an evidence block summarizing top results (short excerpts + metadata)
-        evidence_lines = []
+        # Build citations from candidates
         turn_citations = []
-        for i, (doc_obj, score, col) in enumerate(candidates, start=1):
-            # doc is a langchain Document object; prefer page_content and metadata
-            md = getattr(doc_obj, "metadata", {}) or {}
-            ## Take a closer look at the evidence by printing it out
-            # e.g., print(f"EVALUATING EVIDENCE w/ score {score}, total length
-            #              {len(doc_obj.page_content)}")
-            # e.g., pprint(md)
-            text_excerpt = getattr(doc_obj, "page_content", "") or ""
-            doc_id = md.get("document_id") or md.get("source")
-            chunk_idx = md.get("chunk_index")
+        evidence_lines = []
+        if candidates:
+            for i, (doc_obj, score, col) in enumerate(candidates, start=1):
+                md = getattr(doc_obj, "metadata", {}) or {}
+                text_excerpt = getattr(doc_obj, "page_content", "") or ""
+                doc_id = md.get("document_id") or md.get("source")
+                chunk_idx = md.get("chunk_index")
 
-            evidence_lines.append(
-                f"[{i}] (col={col}) doc={doc_id} chunk={chunk_idx} score={score:.4f}\n"
-                "{text_excerpt}",
-            )
+                evidence_lines.append(
+                    f"[{i}] (col={col}) doc={doc_id} "
+                    f"chunk={chunk_idx} score={score:.4f}\n"
+                    f"{text_excerpt}"
+                )
 
-            # -- just finish up the turn citations here
-            url = (
-                md.get("source_url") or md.get("chunk_url") or None
-            )  # chunk URL for the future
-            if not url and doc_id:
-                # fallback url pattern; adjust to your app's route
-                url = f"/documents/{doc_id}/download/"
-                ## In the future, if the page is available, we can add it to the URL:
-                # with if page: url = f"{url}?page={page}"
+                url = md.get("source_url") or md.get("chunk_url")
+                if not url and doc_id:
+                    url = f"/documents/{doc_id}/download/"
 
-            # keep the langchain Document object for runtime use (post-processing) only
-            turn_citations.append(
-                {
-                    "index": i,
-                    "score": score,
-                    "doc_id": doc_id,
-                    "collection": col,
-                    "chunk_index": chunk_idx,
-                    "page": int(md.get("page", 0)),
-                    "title": md.get("document_name") or md.get("title") or None,
-                    "url": url,
-                    "excerpt": text_excerpt,  # shows during mouseover on the link
-                },
-            )
+                turn_citations.append(
+                    {
+                        "index": i,
+                        "score": score,
+                        "doc_id": doc_id,
+                        "collection": col,
+                        "chunk_index": chunk_idx,
+                        "page": int(md.get("page", 0)),
+                        "title": md.get("document_name") or md.get("title") or None,
+                        "url": url,
+                        "excerpt": text_excerpt,
+                    }
+                )
 
-        evidence_block = "\n\n".join(evidence_lines)
-
-        # Build system message content with user context if available
-        system_content_parts = []
-
-        if user_context:
-            system_content_parts.append(user_context)
-
-        system_content_parts.append(
-            "RETRIEVED EVIDENCE (for reference when answering). "
-            "Each block includes a short excerpt and a citation (e.g., [1], [2])."
-            f"\n\n{evidence_block}\n\n"
-            "When answering, cite the corresponding evidence blocks"
-            " (e.g., [1], [2]) if used."
+        # Build system message with context and evidence
+        return _build_system_message_and_continue(
+            msgs, user_context, system_prompt, turn_citations, evidence_lines
         )
-
-        system_msg = {
-            "role": "system",
-            "content": "\n\n".join(system_content_parts),
-        }
-
-        # Prepend the system message so the model sees evidence before other messages.
-        augmented_messages = [system_msg, *msgs]
-
-        return {
-            "messages": augmented_messages,
-            "next_state": "call_model",
-            "turn_citations": turn_citations,
-            "video_clips": [],
-            "user_context": user_context,
-        }
 
     # existing call_model node unchanged
     # Node 2: call the model and persist compact turn_citations only
-    def call_model(state: RagState):
+    def call_model(state: SdmState):
         """
         Call the LLM with the augmented messages.
         """
@@ -355,30 +351,27 @@ def get_compiled_rag_graph(  # noqa: C901, PLR0915
             response_messages = [model_response]
 
         # Build final reply dict.
-        # - 'messages' will be saved in the state (MessagesState part).
-        # - 'turn_citations' WILL be saved because it's part of RagState.
-
         return {
             "messages": response_messages,
             "next_state": "human_turn",
-            "turn_citations": state.get("turn_citations", []) or [],
-            "video_clips": [],  # will need to build these somewhere
             "user_context": state.get("user_context", ""),
+            "system_prompt": state.get("system_prompt", ""),
+            "turn_citations": state.get("turn_citations", []) or [],
         }
 
     def follow_next_state(state):
         return state["next_state"]
 
     # Build graph
-    builder = StateGraph(RagState)
-    builder.add_node("load_user_context", load_user_context)
+    builder = StateGraph(SdmState)
+    builder.add_node("load_context", load_context)
     builder.add_node("human_turn", human_turn)
     builder.add_node("retrieve_and_augment", retrieve_and_augment)
     builder.add_node("call_model", call_model)
 
     # Start by loading user context, then proceed to human_turn
-    builder.add_edge(START, "load_user_context")
-    builder.add_edge("load_user_context", "human_turn")
+    builder.add_edge(START, "load_context")
+    builder.add_edge("load_context", "human_turn")
     builder.add_conditional_edges(
         "human_turn",
         follow_next_state,

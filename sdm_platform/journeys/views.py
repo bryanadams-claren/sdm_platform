@@ -12,6 +12,7 @@ from django.views.decorators.http import require_http_methods
 
 from sdm_platform.llmchat.models import Conversation
 from sdm_platform.llmchat.utils.format import format_thread_id
+from sdm_platform.memory.managers import UserProfileManager
 from sdm_platform.users.models import User
 
 from .models import Journey
@@ -131,6 +132,10 @@ def handle_onboarding_submission(request, journey):
                 # Set a random password for security
                 user.set_unusable_password()
                 user.save()
+                # Update user profile with name
+                UserProfileManager.update_profile(
+                    user_id=user.email, updates={"name": name}, source="user_input"
+                )
 
             # Log them in
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")

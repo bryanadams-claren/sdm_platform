@@ -310,7 +310,6 @@ class HistoryViewTest(TestCase):
                     },
                 ],
                 "turn_citations": [],
-                "video_clips": [],
             },
         ]
 
@@ -336,7 +335,6 @@ class FormatUtilsTest(TestCase):
             message="Hello!",
             timestamp=timestamp,
             citations=[],
-            video_clips=[],
         )
 
         self.assertEqual(result["role"], "bot")
@@ -344,7 +342,6 @@ class FormatUtilsTest(TestCase):
         self.assertEqual(result["name"], "Assistant")
         self.assertEqual(result["timestamp"], timestamp.isoformat())
         self.assertEqual(result["citations"], [])
-        self.assertEqual(result["video_clips"], [])
 
     def test_format_message_with_user_role(self):
         """Test formatting a message with user role"""
@@ -355,7 +352,6 @@ class FormatUtilsTest(TestCase):
             message="Hi!",
             timestamp=timestamp,
             citations=[],
-            video_clips=[],
         )
 
         self.assertEqual(result["role"], "user")
@@ -372,7 +368,6 @@ class FormatUtilsTest(TestCase):
                 message="test",
                 timestamp=timestamp,
                 citations=[],
-                video_clips=[],
             )
             self.assertEqual(result["role"], "bot")
 
@@ -384,7 +379,6 @@ class FormatUtilsTest(TestCase):
                 message="test",
                 timestamp=timestamp,
                 citations=[],
-                video_clips=[],
             )
             self.assertEqual(result["role"], "user")
 
@@ -406,7 +400,6 @@ class FormatUtilsTest(TestCase):
             message="Based on the evidence [1]...",
             timestamp=timestamp,
             citations=citations,
-            video_clips=[],
         )
 
         self.assertEqual(result["citations"], citations)
@@ -440,7 +433,6 @@ class ChatHistoryUtilsTest(TestCase):
         mock_snap1.values = {
             "messages": [HumanMessage(content="Hello")],
             "turn_citations": [],
-            "video_clips": [],
         }
         mock_snap1.created_at = timestamp.isoformat()
 
@@ -452,7 +444,6 @@ class ChatHistoryUtilsTest(TestCase):
                 AIMessage(content="Hi there!"),
             ],
             "turn_citations": [],
-            "video_clips": [],
         }
         mock_snap2.created_at = (timestamp + datetime.timedelta(seconds=1)).isoformat()
 
@@ -481,7 +472,6 @@ class ChatHistoryUtilsTest(TestCase):
         mock_snap.values = {
             "messages": [AIMessage(content="Response")],
             "turn_citations": citations,
-            "video_clips": [],
         }
         mock_snap.created_at = timestamp.isoformat()
 
@@ -533,7 +523,6 @@ class TasksTest(TestCase):
         mock_graph.invoke.return_value = {
             "messages": [HumanMessage(content="Hello"), ai_message],
             "turn_citations": [],
-            "video_clips": [],
         }
 
         # Mock channel layer
@@ -597,7 +586,6 @@ class TasksTest(TestCase):
         mock_graph.invoke.return_value = {
             "messages": [HumanMessage(content="Hello"), ai_message],
             "turn_citations": citations,
-            "video_clips": [],
         }
 
         # Mock channel layer
@@ -652,7 +640,6 @@ class TasksTest(TestCase):
         mock_graph.invoke.return_value = {
             "messages": [HumanMessage(content="Hello")],
             "turn_citations": [],
-            "video_clips": [],
         }
 
         # Mock channel layer
@@ -775,7 +762,6 @@ class ChatConsumerTest(TransactionTestCase):
         self.assertIn("Hello, bot!", response["content"])
         self.assertIn("timestamp", response)
         self.assertEqual(response["citations"], [])
-        self.assertEqual(response["video_clips"], [])
 
         # Verify Celery task was called
         mock_send_llm_reply.delay.assert_called_once_with(
@@ -905,7 +891,6 @@ class ChatConsumerTest(TransactionTestCase):
             message="This is the bot response",
             timestamp=timestamp,
             citations=[],
-            video_clips=[],
         )
 
         # Get the channel layer directly
@@ -1015,9 +1000,9 @@ class GraphWithMemoryTest(TestCase):
                     "messages": [
                         HumanMessage(content="Hello, what's my name?"),
                     ],
-                    "turn_citations": [],
-                    "video_clips": [],
                     "user_context": "",
+                    "system_prompt": "",
+                    "turn_citations": [],
                 },
                 config,
             )
@@ -1097,9 +1082,9 @@ class GraphWithMemoryTest(TestCase):
                         "messages": [
                             HumanMessage(content="@llm What treatment options exist?"),
                         ],
-                        "turn_citations": [],
-                        "video_clips": [],
                         "user_context": "",
+                        "system_prompt": "",
+                        "turn_citations": [],
                     },
                     config,
                 )
@@ -1156,9 +1141,9 @@ class GraphWithMemoryTest(TestCase):
                     "messages": [
                         HumanMessage(content="@llm Hello"),
                     ],
-                    "turn_citations": [],
-                    "video_clips": [],
                     "user_context": "",
+                    "system_prompt": "",
+                    "turn_citations": [],
                 },
                 config,
             )

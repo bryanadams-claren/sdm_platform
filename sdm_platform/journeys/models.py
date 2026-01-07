@@ -78,6 +78,14 @@ class Journey(models.Model):
         if not self.system_prompt_template:
             return ""
 
+        # Format multi-select responses as comma-separated strings
+        formatted_responses = {}
+        for key, value in responses_dict.items():
+            if isinstance(value, list):
+                formatted_responses[key] = ", ".join(value)
+            else:
+                formatted_responses[key] = value
+
         try:
             return self.system_prompt_template.format(**responses_dict)
         except KeyError:

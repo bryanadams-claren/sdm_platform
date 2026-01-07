@@ -13,7 +13,6 @@ def get_chat_history(history):
 
     prev_msgs = []
     diffs = []
-
     i = 1
     for snap in snaps:  # skip that first message (??)
         """
@@ -25,7 +24,6 @@ def get_chat_history(history):
           snap.tasks
           snap.created_at <-- this is the useful one
         """
-        i = i + 1
         cur_msgs = snap.values.get("messages", [])
         # new messages = everything after the previous snapshot's messages
         new_msgs = cur_msgs[len(prev_msgs) :]
@@ -36,9 +34,8 @@ def get_chat_history(history):
                 "created_at": datetime.fromisoformat(snap.created_at),
                 "new_messages": [message_to_dict(m) for m in new_msgs],
                 "turn_citations": snap.values.get("turn_citations", []),
-                "video_clips": snap.values.get("video_clips", []),
             },
         )
         prev_msgs = cur_msgs
-
+        i = i + 1
     return diffs

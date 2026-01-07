@@ -190,9 +190,8 @@ async function apiFetchChatHistory(convId) {
             text: msg.content,
             timestamp: msg.timestamp,
             citations: msg.citations,
-            clips: msg.video_clips
         })
-        //console.log("citations: " + msg.citations)
+        console.log("role: " + msg.role)
       }
     })
     .catch(error => {
@@ -280,7 +279,7 @@ async function setActiveChat(chatId) {
   };
   chatSocket.onmessage = function(e) {
       const data = JSON.parse(e.data);
-      appendMessage(data.role, data.name, data.content, data.timestamp, data.citations, data.video_clips, true);
+      appendMessage(data.role, data.name, data.content, data.timestamp, data.citations, true);
       if(typingEl) {
           // if the 'llm is thinking' indicator is on, then it'll scroll up wrongly
           hideTypingIndicator();
@@ -304,12 +303,12 @@ async function setActiveChat(chatId) {
 /** Render a list of messages to the DOM */
 function renderMessages(messages = []) {
   chatMessages.innerHTML = "";
-  messages.forEach(m => appendMessage(m.role, m.name, m.text, m.timestamp, m.citations, m.clips, false));
+  messages.forEach(m => appendMessage(m.role, m.name, m.text, m.timestamp, m.citations, false));
   scrollToBottom();
 }
 
 /** Append a single message; optionally save to store */
-function appendMessage(role, name, text, timestamp = null, citations = [], clips = [], save = true) {
+function appendMessage(role, name, text, timestamp = null, citations = [], save = true) {
 
   const wrapper = document.createElement("div");
   wrapper.className = `message ${role}`;
@@ -337,53 +336,56 @@ function appendMessage(role, name, text, timestamp = null, citations = [], clips
   wrapper.appendChild(bubble);
   chatMessages.appendChild(wrapper);
 
-    // NEW: render each video clip as its own message-like bubble
-    if (Array.isArray(clips) && clips.length > 0) {
-        clips.forEach((url) => {
-            // basic allowlist for URL schemes commonly used here
-            // if (typeof url !== "string" || !/^(https?:\/\/|blob:)/i.test(url)) return;
+  // ... no video clips for now ...
+  /*
+  // Render each video clip as its own message-like bubble
+  if (Array.isArray(clips) && clips.length > 0) {
+      clips.forEach((url) => {
+          // basic allowlist for URL schemes commonly used here
+          // if (typeof url !== "string" || !/^(https?:\/\/|blob:)/i.test(url)) return;
 
-            const vWrapper = document.createElement("div");
-            vWrapper.className = `message ${role}`;
+          const vWrapper = document.createElement("div");
+          vWrapper.className = `message ${role}`;
 
-            const vBubble = document.createElement("div");
-            // reuse msg-text so it looks like a message bubble; add a helper class if you want to target video styling
-            vBubble.className = "msg-text msg-video";
+          const vBubble = document.createElement("div");
+          // reuse msg-text so it looks like a message bubble; add a helper class if you want to target video styling
+          vBubble.className = "msg-text msg-video";
 
-            const videoEl = document.createElement("video");
-            videoEl.className = "chat-video";
-            videoEl.controls = true;
-            videoEl.preload = "metadata";
-            videoEl.src = url;
-            videoEl.setAttribute("aria-label", "Video message");
+          const videoEl = document.createElement("video");
+          videoEl.className = "chat-video";
+          videoEl.controls = true;
+          videoEl.preload = "metadata";
+          videoEl.src = url;
+          videoEl.setAttribute("aria-label", "Video message");
 
-            // Optional: show a link only if the video fails to load
-            const fallbackLink = document.createElement("a");
-            fallbackLink.href = url;
-            fallbackLink.target = "_blank";
-            fallbackLink.rel = "noopener noreferrer";
-            fallbackLink.textContent = "Open video in new tab";
-            videoEl.addEventListener("error", () => {
-                // append only once if an error occurs
-                if (!vBubble.contains(fallbackLink)) vBubble.appendChild(fallbackLink);
-            });
+          // Optional: show a link only if the video fails to load
+          const fallbackLink = document.createElement("a");
+          fallbackLink.href = url;
+          fallbackLink.target = "_blank";
+          fallbackLink.rel = "noopener noreferrer";
+          fallbackLink.textContent = "Open video in new tab";
+          videoEl.addEventListener("error", () => {
+              // append only once if an error occurs
+              if (!vBubble.contains(fallbackLink)) vBubble.appendChild(fallbackLink);
+          });
 
-            vBubble.appendChild(videoEl);
+          vBubble.appendChild(videoEl);
 
-            // Timestamp for the video bubble
-            const vTimeSpan = document.createElement("span");
-            vTimeSpan.className = "timestamp";
-            vTimeSpan.textContent = formatTime(timestamp);
-            vBubble.appendChild(vTimeSpan);
+          // Timestamp for the video bubble
+          const vTimeSpan = document.createElement("span");
+          vTimeSpan.className = "timestamp";
+          vTimeSpan.textContent = formatTime(timestamp);
+          vBubble.appendChild(vTimeSpan);
 
-            vWrapper.appendChild(vBubble);
-            chatMessages.appendChild(vWrapper);
-        });
-    }
+          vWrapper.appendChild(vBubble);
+          chatMessages.appendChild(vWrapper);
+      });
+  }
+  */
 
   if (save && activeConvId) {
     const arr = histories.get(activeConvId) || [];
-    arr.push({ role, text, timestamp, citations, clips });
+    arr.push({ role, text, timestamp, citations});
     histories.set(activeConvId, arr);
   }
 }

@@ -85,6 +85,7 @@
 {% endblock body %}
 {% block user_javascript %}
   {% compress js %}
+    <script defer src="{% static 'js/conversationpoints.js' %}"></script>
     <script defer src="{% static 'js/chat.js' %}"></script>
   {% endcompress %}
 {% endblock user_javascript %}

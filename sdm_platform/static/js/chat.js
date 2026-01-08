@@ -298,6 +298,11 @@ async function setActiveChat(chatId) {
     histories.set(activeConvId, data);
   }
   renderMessages(histories.get(activeConvId));
+  // Load conversation points for this conversation
+  if (window.ConversationPoints) {
+    window.ConversationPoints.load(activeConvId);
+    window.ConversationPoints.startRefresh(activeConvId);
+  }
 }
 
 /** Render a list of messages to the DOM */

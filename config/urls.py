@@ -36,6 +36,7 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
     path("chat/", include("sdm_platform.llmchat.urls")),
+    path("memory/", include("sdm_platform.memory.urls", namespace="memory")),
     path("documents/", include("sdm_platform.evidence.urls", namespace="evidence")),
     path("", include("sdm_platform.journeys.urls")),
     # Media files

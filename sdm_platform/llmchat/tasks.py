@@ -17,6 +17,7 @@ from sdm_platform.llmchat.utils.format import format_message
 from sdm_platform.llmchat.utils.graph import get_compiled_rag_graph
 from sdm_platform.llmchat.utils.graph import get_postgres_checkpointer
 from sdm_platform.memory.store import get_memory_store
+from sdm_platform.memory.tasks import extract_all_memories
 from sdm_platform.memory.tasks import extract_user_profile_memory
 
 logger = logging.getLogger(__name__)
@@ -34,9 +35,11 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
     conversation = Conversation.objects.get(thread_id=thread_name)
 
     # Get journey slug if this conversation is linked to a journey
-    # journey_slug = None
-    # if hasattr(conversation, "journey_response") and conversation.journey_response:
-    #     journey_slug = conversation.journey_response.journey.slug
+    # Get journey slug directly from conversation
+    journey_slug = None
+    if conversation.journey:
+        journey_slug = conversation.journey.slug if conversation.journey else None
+        logger.info("Conversation linked to journey: %s", journey_slug)
 
     # Build config with user_id for memory lookup
     config = RunnableConfig(
@@ -88,4 +91,10 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
             if hasattr(m, "type") and hasattr(m, "content")
         ]
 
-        extract_user_profile_memory.delay(username, recent_messages)  # pyright: ignore[reportCallIssue]
+        # Extract all memories (profile + conversation points if journey exists)
+        if journey_slug:
+            # Extract both profile and conversation point memories
+            extract_all_memories.delay(username, journey_slug, recent_messages)  # pyright: ignore[reportCallIssue]
+        else:
+            # Extract only user profile if no journey
+            extract_user_profile_memory.delay(username, recent_messages)  # pyright: ignore[reportCallIssue]

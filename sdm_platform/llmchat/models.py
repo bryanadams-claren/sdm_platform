@@ -23,6 +23,16 @@ class Conversation(models.Model):
         related_name="conversations",
     )
 
+    # Link to the journey this conversation belongs to
+    journey = models.ForeignKey(
+        "journeys.Journey",
+        on_delete=models.CASCADE,
+        related_name="conversations",
+        null=True,  # Nullable for migration; can make required later
+        blank=True,
+        help_text="The journey/condition this conversation is associated with",
+    )
+
     # A human-friendly title (optional, for UI)
     title = models.CharField(max_length=255, default="")
 

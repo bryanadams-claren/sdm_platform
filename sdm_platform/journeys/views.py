@@ -164,6 +164,7 @@ def handle_onboarding_submission(request, journey):
             user=user,
             conv_id=conv_id,
             defaults={
+                "journey": journey,  # Link conversation directly to journey
                 "title": f"{journey.title} - {user.name}",
                 "thread_id": thread_id,
                 "system_prompt": system_prompt,

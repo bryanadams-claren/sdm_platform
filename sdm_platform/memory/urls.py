@@ -11,4 +11,9 @@ urlpatterns = [
         views.conversation_points_api,
         name="conversation_points",
     ),
+    path(
+        "conversation/<str:conv_id>/points/<str:point_slug>/initiate/",
+        views.initiate_conversation_point,
+        name="initiate_conversation_point",
+    ),
 ]

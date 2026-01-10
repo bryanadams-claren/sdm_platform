@@ -220,6 +220,64 @@ function stopPointsRefresh() {
     }
 }
 
+/**
+ * Handle clicking on a conversation point
+ * @param {Object} point - The clicked conversation point
+ */
+function handleConversationPointClick(point) {
+    console.log('Conversation point clicked:', point);
+
+    // Get CSRF token for POST request
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    if (!csrfToken) {
+        console.error('CSRF token not found');
+        return;
+    }
+
+    // Get the active conversation ID from the global scope
+    if (!window.activeConvId) {
+        console.error('No active conversation ID');
+        return;
+    }
+
+    // Initiate the conversation point
+    fetch(`/memory/conversation/${window.activeConvId}/points/${point.slug}/initiate/`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Conversation point initiated successfully');
+            // Optionally show a visual indication that the AI is responding
+            showAIThinkingIndicator(point.title);
+        } else {
+            console.error('Failed to initiate conversation point:', data.error);
+            alert('Failed to start conversation: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error initiating conversation point:', error);
+        alert('Error starting conversation. Please try again.');
+    });
+}
+
+/**
+ * Show a temporary indicator that the AI is preparing to respond
+ * @param {string} pointTitle - Title of the conversation point
+ */
+function showAIThinkingIndicator(pointTitle) {
+    // You can implement this to show a message in the chat
+    // For now, just log it
+    console.log(`AI is preparing to discuss: ${pointTitle}`);
+}
+
+
 // Export for use in other scripts
 window.ConversationPoints = {
     load: loadConversationPoints,

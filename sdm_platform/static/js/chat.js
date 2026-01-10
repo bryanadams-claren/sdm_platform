@@ -14,6 +14,7 @@ const histories = new Map();
 
 // Active conversation id (string)
 let activeConvId = document.querySelector(".chat-item.active")?.dataset.id;
+window.activeConvId = activeConvId;
 
 // The websocket for sending and receiving chat messages, the placeholder for input
 let chatSocket = null;
@@ -257,9 +258,15 @@ chatSubject.addEventListener("keypress", (e) => {
 
 /** Set the active chat by id, open the socket to that chat, and load/render its messages */
 async function setActiveChat(chatId) {
-  activeConvId = String(chatId);
+  // Stop refreshing points for previous conversation
+  if (window.ConversationPoints) {
+    window.ConversationPoints.stopRefresh();
+  }
 
-  // Update active class
+  activeConvId = String(chatId);
+  window.activeConvId = activeConvId;  // Update global reference
+
+ // Update active class
   document.querySelectorAll(".chat-item").forEach(el => el.classList.remove("active"));
   const activeEl = document.querySelector(`.chat-item[data-id="${activeConvId}"]`);
   if (activeEl) activeEl.classList.add("active");

@@ -25,7 +25,17 @@ urlpatterns = [
         views.journey_subdomain_onboarding,
         name="journey_subdomain_onboarding",
     ),
-    # Can be accessed via subdomain or direct path
+    path(
+        "not-eligible/",
+        views.journey_subdomain_not_eligible,
+        name="journey_subdomain_not_eligible",
+    ),
+    # Path-based journey access (e.g., /backpain/, /backpain/start/)
     path("<slug:journey_slug>/", views.journey_landing, name="landing"),
     path("<slug:journey_slug>/start/", views.journey_onboarding, name="onboarding"),
+    path(
+        "<slug:journey_slug>/not-eligible/",
+        views.journey_not_eligible,
+        name="not_eligible",
+    ),
 ]

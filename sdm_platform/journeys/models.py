@@ -92,6 +92,30 @@ class Journey(models.Model):
             # Fallback if template has placeholders not in responses
             return self.system_prompt_template
 
+    def check_red_flags(self, responses_dict):
+        """
+        Check if user responses contain any red flags that would make them ineligible.
+
+        Returns:
+            tuple: (has_red_flags: bool, red_flag_responses: list)
+        """
+        red_flag_responses = []
+
+        # Check for red_flags question
+        red_flags_value = responses_dict.get("red_flags")
+        if red_flags_value:
+            # If it's a list (multi-select) or single value
+            if isinstance(red_flags_value, list):
+                # If anything other than "no_red_flags" is selected
+                if any(flag != "no_red_flags" for flag in red_flags_value):
+                    red_flag_responses.extend(
+                        [f for f in red_flags_value if f != "no_red_flags"]
+                    )
+            elif red_flags_value != "no_red_flags":
+                red_flag_responses.append(red_flags_value)
+
+        return len(red_flag_responses) > 0, red_flag_responses
+
 
 class JourneyOption(models.Model):
     """

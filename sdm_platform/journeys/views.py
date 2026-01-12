@@ -94,19 +94,73 @@ def journey_subdomain_onboarding(request):
     return journey_onboarding(request, journey_slug=journey_slug)
 
 
+def journey_not_eligible(request, journey_slug):
+    """
+    Page shown when a user's responses indicate they're not eligible for the journey.
+    Typically shown when red flag symptoms are present.
+    """
+    journey = get_object_or_404(Journey, slug=journey_slug, is_active=True)
+
+    # Get the red flag responses from session if available
+    red_flag_info = request.session.get("red_flag_info", {})
+
+    context = {
+        "journey": journey,
+        "red_flag_responses": red_flag_info.get("responses", []),
+    }
+
+    # Clear the red flag info from session
+    if "red_flag_info" in request.session:
+        del request.session["red_flag_info"]
+
+    return render(request, "journeys/not_eligible.html", context)
+
+
+def journey_subdomain_not_eligible(request):
+    """
+    Wrapper for subdomain access to not eligible page.
+    """
+    journey_slug = getattr(request, "journey_slug", None)
+    if not journey_slug:
+        return redirect("home")
+
+    return journey_not_eligible(request, journey_slug=journey_slug)
+
+
 @require_http_methods(["POST"])
 def handle_onboarding_submission(request, journey):
     """
     Process the onboarding form submission.
-    1. Create/update user if needed
-    2. Store responses
-    3. Create conversation with context
-    4. Redirect to chat
+    1. Check for red flags (eligibility screening)
+    2. Create/update user if needed
+    3. Store responses
+    4. Create conversation with context
+    5. Redirect to chat or not eligible page
     """
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    # Step 0: Check for red flags first
+    responses_dict = data.get("responses", {})
+    has_red_flags, red_flag_responses = journey.check_red_flags(responses_dict)
+
+    if has_red_flags:
+        # Store red flag info in session for the not eligible page
+        request.session["red_flag_info"] = {
+            "journey_slug": journey.slug,
+            "responses": red_flag_responses,
+        }
+
+        # Return redirect to not eligible page
+        return JsonResponse(
+            {
+                "success": True,
+                "not_eligible": True,
+                "redirect_url": f"/{journey.slug}/not-eligible/",
+            }
+        )
 
     with transaction.atomic():
         # Step 1: Handle user provisioning
@@ -141,8 +195,6 @@ def handle_onboarding_submission(request, journey):
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
 
         # Step 2: Store journey responses
-        responses_dict = data.get("responses", {})
-
         journey_response, created = JourneyResponse.objects.update_or_create(
             user=user,
             journey=journey,

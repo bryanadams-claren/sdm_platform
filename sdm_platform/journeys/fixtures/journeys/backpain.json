@@ -8,31 +8,8 @@
   "primary_color": "#0066cc",
   "hero_image": "",
   "conversation_template_slug": "backpain-sdm",
-  "system_prompt_template": "You are a compassionate healthcare assistant helping a patient with back pain. The patient has reported: Duration: {duration}, Pain Level: {pain_level}, Previous treatments: {treatments_tried}. Location: {pain_location}. The patients goals are {goals}. Provide evidence-based information about treatment options, focusing on shared decision making. Be empathetic and informative.",
+  "system_prompt_template": "You are a compassionate healthcare assistant helping a patient with back pain. The patient has reported: Duration: {duration}, Pain Level: {pain_level}, Previous treatments: {treatments_tried}. Location: {pain_location}. The patients goals are {goals}. Provide evidence-based information about treatment options, focusing on shared decision making. Be empathetic and informative, but try to limit the length of responses and end with questions in order to encourage dialogue.",
   "onboarding_questions": [
-    {
-      "id": "duration",
-      "type": "choice",
-      "text": "How long have you been experiencing back pain?",
-      "required": true,
-      "options": [
-        {
-          "value": "less_than_6_weeks",
-          "label": "Less than 6 weeks",
-          "description": "Acute back pain"
-        },
-        {
-          "value": "6_weeks_to_3_months",
-          "label": "6 weeks to 3 months",
-          "description": "Subacute back pain"
-        },
-        {
-          "value": "more_than_3_months",
-          "label": "More than 3 months",
-          "description": "Chronic back pain"
-        }
-      ]
-    },
     {
       "id": "red_flags",
       "type": "choice",
@@ -83,6 +60,29 @@
           "value": "no_red_flags",
           "label": "None",
           "description": "None of the above listed conditions"
+        }
+      ]
+    },
+    {
+      "id": "duration",
+      "type": "choice",
+      "text": "How long have you been experiencing back pain?",
+      "required": true,
+      "options": [
+        {
+          "value": "less_than_6_weeks",
+          "label": "Less than 6 weeks",
+          "description": "Acute back pain"
+        },
+        {
+          "value": "6_weeks_to_3_months",
+          "label": "6 weeks to 3 months",
+          "description": "Subacute back pain"
+        },
+        {
+          "value": "more_than_3_months",
+          "label": "More than 3 months",
+          "description": "Chronic back pain"
         }
       ]
     },
@@ -292,101 +292,119 @@
   ],
   "conversation_points": [
     {
-      "slug": "treatment-goals",
-      "title": "Discuss your treatment goals",
-      "description": "Understanding what the patient hopes to achieve with treatment",
-      "system_message_template": "I'd like to understand your goals for treatment. Are there specific activities you've been unable to do because of your back pain? What would you most like to be able to do again?",
+      "slug": "choice-awareness",
+      "title": "Recognize a decision exists",
+      "description": "Helping the patient understand that they have a choice to make and what the decision involves",
+      "system_message_template": "I want to make sure you know that you have a decision to make here, and your input matters. Let me explain what this decision is about and the fact that there are different paths we could take together.",
       "semantic_keywords": [
-        "goals",
-        "hope to achieve",
-        "activities I miss",
-        "what I want",
-        "return to",
-        "get back to",
-        "able to do",
-        "important to me"
+        "do I have a choice",
+        "what are we deciding",
+        "is this my decision",
+        "what is the decision",
+        "options exist",
+        "I didn't know I could choose",
+        "can I decide",
+        "decision point",
+        "whether or not to",
+        "alternatives"
       ],
-      "confidence_threshold": 0.7,
+      "confidence_threshold": 0.9,
       "sort_order": 1,
       "is_active": true
     },
     {
-      "slug": "treatment-options",
-      "title": "Understand treatment options",
-      "description": "Discussing available treatment approaches and their characteristics",
-      "system_message_template": "Let's explore the treatment options available for your back pain. Would you like to learn about the different approaches we could consider, including their benefits and potential drawbacks?",
+      "slug": "discuss-options",
+      "title": "Discuss available options",
+      "description": "Presenting all relevant treatment options including conservative approaches and doing nothing",
+      "system_message_template": "Let me walk you through the options available to you. This includes all viable approaches—from more conservative treatments to more aggressive ones, and also the option of watchful waiting or no treatment. Which options would you like to learn more about?",
       "semantic_keywords": [
-        "treatment options",
-        "surgery",
-        "physical therapy",
-        "medication",
         "what are my options",
-        "injections",
-        "procedures",
-        "what can be done"
+        "treatment options",
+        "alternatives",
+        "other choices",
+        "what else can be done",
+        "do nothing",
+        "conservative treatment",
+        "wait and see",
+        "options list",
+        "comparison",
+        "Option A",
+        "Option B"
       ],
-      "confidence_threshold": 0.7,
+      "confidence_threshold": 0.9,
       "sort_order": 2,
       "is_active": true
     },
     {
-      "slug": "preferences-values",
-      "title": "Analyze your preferences and values",
-      "description": "Understanding patient values, preferences, and what matters most",
-      "system_message_template": "Everyone has different preferences when it comes to treatment. What matters most to you? For example, some people prefer to avoid surgery if possible, while others want the fastest path to recovery. Some prioritize avoiding medications, while others are comfortable with them if they provide relief.",
+      "slug": "benefits-and-harms",
+      "title": "Understand benefits and harms",
+      "description": "Explaining the pros, cons, and probabilities of outcomes for each option, tailored to the patient's situation",
+      "system_message_template": "For each option, I'd like to help you understand the potential benefits, risks, and uncertainties. This includes how likely different outcomes are, based on your specific situation. Would you like me to go through the pros and cons of each option?",
       "semantic_keywords": [
-        "prefer",
-        "important to me",
-        "values",
-        "matters most",
-        "priorities",
-        "rather",
-        "would like to avoid",
-        "comfortable with",
-        "willing to"
+        "pros and cons",
+        "benefits",
+        "risks",
+        "side effects",
+        "what could go wrong",
+        "success rate",
+        "how likely",
+        "chances",
+        "probability",
+        "outcomes",
+        "what to expect",
+        "survival rate",
+        "complications",
+        "pain relief"
       ],
-      "confidence_threshold": 0.7,
+      "confidence_threshold": 0.9,
       "sort_order": 3,
       "is_active": true
     },
     {
-      "slug": "demographics-context",
-      "title": "Understand your background and context",
-      "description": "Learning about demographics and life context that may influence treatment decisions",
-      "system_message_template": "To help me provide the most relevant information, could you tell me a bit about yourself? For example, your age, occupation, and typical daily activities? This helps me understand what matters most in your situation.",
+      "slug": "clarify-values",
+      "title": "Clarify your values and preferences",
+      "description": "Helping the patient identify and articulate what matters most to them in making this decision",
+      "system_message_template": "I'd like to understand what matters most to you as we think through this decision. What outcomes are you hoping for? Are there things you want to avoid? Understanding your priorities will help us find the option that fits you best.",
       "semantic_keywords": [
-        "age",
-        "years old",
-        "occupation",
-        "job",
-        "work",
-        "daily activities",
-        "family",
-        "responsibilities",
-        "lifestyle"
+        "what matters to me",
+        "my priorities",
+        "I value",
+        "most important",
+        "I want to avoid",
+        "I'm worried about",
+        "my concerns",
+        "what I fear",
+        "quality of life",
+        "goals",
+        "maintaining mobility",
+        "independence",
+        "family activities"
       ],
-      "confidence_threshold": 0.7,
+      "confidence_threshold": 0.9,
       "sort_order": 4,
       "is_active": true
     },
     {
-      "slug": "concerns-barriers",
-      "title": "Discuss concerns and barriers",
-      "description": "Understanding patient concerns about treatments and potential barriers",
-      "system_message_template": "Do you have any concerns or worries about the different treatment options? Or any practical considerations like cost, time commitment, or access to care that we should keep in mind?",
+      "slug": "deliberation-support",
+      "title": "Weigh your options",
+      "description": "Supporting the patient in weighing trade-offs and considering how options align with their values",
+      "system_message_template": "Now that you know your options and what matters to you, let's think through how each option fits with your priorities. We can explore 'what if' scenarios, and I can help you see where each option aligns or conflicts with your goals. Take your time—this is an important decision.",
       "semantic_keywords": [
-        "concerned",
-        "worried",
-        "afraid",
-        "cost",
-        "expensive",
-        "afford",
-        "time",
-        "work schedule",
-        "transportation",
-        "insurance"
+        "weighing options",
+        "trade-offs",
+        "which is best for me",
+        "I'm torn",
+        "hard to decide",
+        "what if I choose",
+        "comparing",
+        "decision grid",
+        "fits my goals",
+        "questions for my doctor",
+        "need to think",
+        "involve my family",
+        "not sure yet"
       ],
-      "confidence_threshold": 0.7,
+      "confidence_threshold": 0.9,
       "sort_order": 5,
       "is_active": true
     }

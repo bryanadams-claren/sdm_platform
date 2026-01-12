@@ -338,3 +338,5 @@ sdm_platform/media/
 !.elasticbeanstalk/*.global.yml
 
 Procfile
+
+*.backup

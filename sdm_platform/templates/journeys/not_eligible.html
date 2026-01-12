@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block content %}
+  <!-- djlint ignore H021,D018 -->
+  <style>
+    /* Set journey-specific CSS variable */
+    :root {
+      --journey-primary-color: {
+          {
+          journey.primary_color
+        }
+      }
+    }
+
+    .excl-make-big {
+      font-size: 4rem;
+    }
+  </style>
+  <div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="card shadow">
+          <div class="card-body p-5 text-center">
+            <div class="mb-4">
+              <i class="bi bi-exclamation-triangle-fill text-warning excl-make-big"></i>
+            </div>
+            <h2 class="mb-4">Important Notice</h2>
+            <div class="alert alert-warning text-start mb-4">
+              <p class="mb-0">
+                <strong>Our services are not intended for use by someone with your symptoms.</strong>
+              </p>
+            </div>
+            <p class="lead text-start mb-4">
+              Based on your responses, we recommend that you seek immediate medical attention
+              from a healthcare provider. The symptoms you've described may require urgent evaluation
+              and care that goes beyond what this tool can provide.
+            </p>
+            <div class="text-start mb-4">
+              <h5 class="mb-3">What you should do:</h5>
+              <ul class="list-unstyled">
+                <li class="mb-2">
+                  <i class="bi bi-check-circle-fill text-success me-2"></i>
+                  Contact your primary care physician
+                </li>
+                <li class="mb-2">
+                  <i class="bi bi-check-circle-fill text-success me-2"></i>
+                  Visit an urgent care center or emergency room if symptoms are severe
+                </li>
+                <li class="mb-2">
+                  <i class="bi bi-check-circle-fill text-success me-2"></i>
+                  Call 911 if you're experiencing a medical emergency
+                </li>
+              </ul>
+            </div>
+            <div class="mt-5">
+              <a href="{% url 'home' %}" class="btn btn-outline-primary btn-lg">
+                <i class="bi bi-house-fill me-2"></i>Return to Home
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

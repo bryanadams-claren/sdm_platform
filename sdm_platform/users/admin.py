@@ -113,7 +113,7 @@ class UserAdmin(auth_admin.UserAdmin):
             "Copy JSON</button>"
             '<pre style="background-color: #f5f5f5; padding: 10px; '
             "border: 1px solid #ddd; border-radius: 4px; "
-            'overflow-x: auto; max-height: 600px;">{}</pre>'
+            'overflow-x: auto; max-height: 600px; color: #333;">{}</pre>'
             "</div>",
             json_str,
         )

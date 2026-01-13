@@ -107,7 +107,7 @@ def extract_user_profile_memory(user_id: str, messages_json: list[dict]):
 
 
 CONVERSATION_POINT_EXTRACTION_PROMPT = """You are analyzing a conversation
-to determine if specific topics have been discussed.
+to determine if the human (not the AI) has meaningfully discussed a topic.
 
 TOPIC TO ANALYZE:
 {topic_title}
@@ -122,8 +122,10 @@ RECENT CONVERSATION:
 {messages}
 
 Your task:
-1. Determine if this topic has been meaningfully discussed in the conversation
-2. Extract key points, quotes, and structured information related to this topic
+1. Determine if this topic has been meaningfully discussed in the conversation, and
+   to what extent the human has participated
+2. Extract key points, quotes, and structured information related to the human's
+   understanding of the topic
 3. Assign a confidence score (0-1) for how thoroughly the topic was addressed
 
 Return a JSON object with this structure:
@@ -131,16 +133,15 @@ Return a JSON object with this structure:
     "is_addressed": boolean,
     "confidence_score": float between 0 and 1,
     "extracted_points": [list of key points discussed],
-    "relevant_quotes": [list of relevant user quotes],
+    "relevant_quotes": [list of relevant user quotes from the human],
     "structured_data": {{any structured information you can extract}},
     "reasoning": "Brief explanation of your assessment"
 }}
 
 Guidelines:
-- is_addressed should be true only if the confidence score is above the
-  confidence_threshold for that conversation point
-- confidence_score should reflect how thoroughly/clearly the topic was covered
-  with a bias towards the user displaying understanding
+- is_addressed should be true only if the confidence score is above 0.9
+- confidence_score should reflect how thoroughly/clearly the topic was covered and
+  must include evidence the human understands and participated in the content
 - Only include direct information from the conversation, don't infer
 - If the topic wasn't discussed at all, return is_addressed=false and
 confidence_score=0.0

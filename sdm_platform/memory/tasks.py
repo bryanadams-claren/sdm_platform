@@ -137,8 +137,10 @@ Return a JSON object with this structure:
 }}
 
 Guidelines:
-- is_addressed should be true only if the topic was meaningfully discussed
+- is_addressed should be true only if the confidence score is above the
+  confidence_threshold for that conversation point
 - confidence_score should reflect how thoroughly/clearly the topic was covered
+  with a bias towards the user displaying understanding
 - Only include direct information from the conversation, don't infer
 - If the topic wasn't discussed at all, return is_addressed=false and
 confidence_score=0.0

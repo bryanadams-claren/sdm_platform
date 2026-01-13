@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.contrib.auth import login
 from django.db import transaction
@@ -11,12 +12,15 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from sdm_platform.llmchat.models import Conversation
+from sdm_platform.llmchat.tasks import send_ai_initiated_message
 from sdm_platform.llmchat.utils.format import format_thread_id
 from sdm_platform.memory.managers import UserProfileManager
 from sdm_platform.users.models import User
 
 from .models import Journey
 from .models import JourneyResponse
+
+logger = logging.getLogger(__name__)
 
 
 def journey_landing(request, journey_slug):
@@ -212,7 +216,7 @@ def handle_onboarding_submission(request, journey):
         # Build system prompt with responses
         system_prompt = journey.build_system_prompt(responses_dict)
 
-        conversation, _ = Conversation.objects.get_or_create(
+        conversation, conversation_created = Conversation.objects.get_or_create(
             user=user,
             conv_id=conv_id,
             defaults={
@@ -227,7 +231,30 @@ def handle_onboarding_submission(request, journey):
         journey_response.conversation = conversation
         journey_response.save()
 
-        # Step 4: Return success with redirect URL
+        # Step 4: Send initial AI message using first conversation point
+        # Only send if this is a newly created conversation
+        if conversation_created:
+            # Get the first active conversation point
+            first_point = (
+                journey.conversation_points.filter(is_active=True)
+                .order_by("sort_order", "slug")
+                .first()
+            )
+
+            if first_point:
+                # Send AI-initiated message to start the conversation
+                send_ai_initiated_message.delay(  # pyright: ignore[reportCallIssue]
+                    thread_id,
+                    user.email,
+                    first_point.system_message_template,
+                )
+                logger.info(
+                    "Initiated conversation for %s with first point: %s",
+                    user.email,
+                    first_point.slug,
+                )
+
+        # Step 5: Return success with redirect URL
         return JsonResponse(
             {"success": True, "redirect_url": f"/chat/conversation/{conv_id}/"}
         )

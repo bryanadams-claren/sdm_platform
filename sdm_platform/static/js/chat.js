@@ -1,13 +1,15 @@
-const chatMessages  = document.getElementById("chatMessages");
-const chatInput     = document.getElementById("chatInput");
-const sendBtn       = document.getElementById("sendBtn");
-const chatList      = document.getElementById("chatList");
+const chatMessages = document.getElementById("chatMessages");
+const chatInput = document.getElementById("chatInput");
+const sendBtn = document.getElementById("sendBtn");
+const chatList = document.getElementById("chatList");
 //const newChatBtn    = document.getElementById("newChatBtn");
-const newChatForm   = document.getElementById("newChatForm");
-const chatSubject   = document.getElementById("chatSubject");
+const newChatForm = document.getElementById("newChatForm");
+const chatSubject = document.getElementById("chatSubject");
 
 // The CSRF token for making new conversation POST requests
-const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+const csrfToken = document.querySelector(
+  'input[name="csrfmiddlewaretoken"]',
+).value;
 
 // In-memory store of histories: { [chatId]: Array<{role, name,text, etc.}> }
 const histories = new Map();
@@ -16,13 +18,11 @@ const histories = new Map();
 let activeConvId = document.querySelector(".chat-item.active")?.dataset.id;
 window.activeConvId = activeConvId;
 
-// The websocket for sending and receiving chat messages, the placeholder for input
-let chatSocket = null;
+// The placeholder for input (chatSocket is now managed by ChatWebSocket global)
 let _savedPlaceholder = null;
 
 // Typing indicator
 let typingEl = null;
-
 
 function formatTime(isoString = null) {
   const date = isoString ? new Date(isoString) : new Date();
@@ -38,9 +38,11 @@ function formatTime(isoString = null) {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   } else {
     // Show date + time for previous days
-    return date.toLocaleDateString([], { month: "short", day: "numeric" }) +
-           " " +
-           date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return (
+      date.toLocaleDateString([], { month: "short", day: "numeric" }) +
+      " " +
+      date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    );
   }
 }
 
@@ -54,7 +56,8 @@ function linkifyCitationsWithBreaks(text, citations = []) {
     const parts = String(s ?? "").split(/\r?\n/);
     parts.forEach((part, i) => {
       target.appendChild(document.createTextNode(part));
-      if (i < parts.length - 1) target.appendChild(document.createElement("br"));
+      if (i < parts.length - 1)
+        target.appendChild(document.createElement("br"));
     });
   };
 
@@ -71,7 +74,7 @@ function linkifyCitationsWithBreaks(text, citations = []) {
 
     const idx = Number(match[1]);
     // Find matching citation by index (numeric)
-    const citation = (citations || []).find(c => Number(c.index) === idx);
+    const citation = (citations || []).find((c) => Number(c.index) === idx);
 
     if (citation) {
       const a = document.createElement("a");
@@ -84,7 +87,8 @@ function linkifyCitationsWithBreaks(text, citations = []) {
 
       // helpful metadata in title attribute (excerpt or title)
       if (citation.title) a.title = citation.title;
-      else if (citation.excerpt) a.title = citation.excerpt.replace(/\s+/g, " ").trim().slice(0, 300);
+      else if (citation.excerpt)
+        a.title = citation.excerpt.replace(/\s+/g, " ").trim().slice(0, 300);
 
       // data attributes for potential click handlers later
       if (citation.doc_id) a.dataset.docId = citation.doc_id;
@@ -177,26 +181,25 @@ function enableChatInput() {
   }
 }
 
-
 /** Fetch chat history by id */
 async function apiFetchChatHistory(convId) {
   const chat_hist = [];
-  await fetch('/chat/history/'+ convId + '/')
-    .then(response => response.json())
-    .then(data => {
-      for(const msg of data.messages){
+  await fetch("/chat/history/" + convId + "/")
+    .then((response) => response.json())
+    .then((data) => {
+      for (const msg of data.messages) {
         chat_hist.push({
-            role: msg.role,
-            name: msg.name,
-            text: msg.content,
-            timestamp: msg.timestamp,
-            citations: msg.citations,
-        })
-        console.log("role: " + msg.role)
+          role: msg.role,
+          name: msg.name,
+          text: msg.content,
+          timestamp: msg.timestamp,
+          citations: msg.citations,
+        });
+        console.log("role: " + msg.role);
       }
     })
-    .catch(error => {
-      console.error('Error fetching chat history:', error);
+    .catch((error) => {
+      console.error("Error fetching chat history:", error);
     });
   return chat_hist;
 }
@@ -208,7 +211,13 @@ newChatForm.addEventListener("submit", (e) => {
   if (!subject) return;
 
   const new_conv_id = String(Date.now());
-  histories.set(new_conv_id, [{ role: "bot", name: "AI Assistant", text: `👋 New conversation: ${subject}` }]);
+  histories.set(new_conv_id, [
+    {
+      role: "bot",
+      name: "AI Assistant",
+      text: `👋 New conversation: ${subject}`,
+    },
+  ]);
 
   const node = document.createElement("div");
   node.className = "chat-item";
@@ -216,32 +225,34 @@ newChatForm.addEventListener("submit", (e) => {
   node.textContent = `💬 ${subject}`;
   chatList.prepend(node);
 
-  fetch('/chat/conversation/' + new_conv_id + '/', {
-    method: 'POST',
-    credentials: 'same-origin',
+  fetch("/chat/conversation/" + new_conv_id + "/", {
+    method: "POST",
+    credentials: "same-origin",
     headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': csrfToken
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrfToken,
     },
     body: JSON.stringify({
-      'title': subject,
+      title: subject,
+    }),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      //return response.json(); // Or response.text() if expecting plain text
     })
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    //return response.json(); // Or response.text() if expecting plain text
-  })
-  .then(data => {
-    console.log('Success:', data);
-  })
-  .catch(error => {
-    console.error('Error:', error);
-  });
+    .then((data) => {
+      console.log("Success:", data);
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+    });
 
   // Hide modal & reset
-  const modal = bootstrap.Modal.getInstance(document.getElementById("newChatModal"));
+  const modal = bootstrap.Modal.getInstance(
+    document.getElementById("newChatModal"),
+  );
   modal.hide();
   chatSubject.value = "";
 
@@ -251,7 +262,7 @@ newChatForm.addEventListener("submit", (e) => {
 // Allow Enter key inside subject input to submit form
 chatSubject.addEventListener("keypress", (e) => {
   if (e.key === "Enter") {
-    e.preventDefault();  // prevent accidental newline
+    e.preventDefault(); // prevent accidental newline
     newChatForm.requestSubmit(); // programmatically submit the form
   }
 });
@@ -263,40 +274,79 @@ async function setActiveChat(chatId) {
     window.ConversationPoints.stopRefresh();
   }
 
-  activeConvId = String(chatId);
-  window.activeConvId = activeConvId;  // Update global reference
+  // Disconnect previous WebSocket connections
+  if (window.ChatWebSocket) {
+    window.ChatWebSocket.disconnect();
+  }
+  if (window.StatusWebSocket) {
+    window.StatusWebSocket.disconnect();
+  }
 
- // Update active class
-  document.querySelectorAll(".chat-item").forEach(el => el.classList.remove("active"));
-  const activeEl = document.querySelector(`.chat-item[data-id="${activeConvId}"]`);
+  activeConvId = String(chatId);
+  window.activeConvId = activeConvId; // Update global reference
+
+  // Update active class
+  document
+    .querySelectorAll(".chat-item")
+    .forEach((el) => el.classList.remove("active"));
+  const activeEl = document.querySelector(
+    `.chat-item[data-id="${activeConvId}"]`,
+  );
   if (activeEl) activeEl.classList.add("active");
 
-  // Reset the websocket
-  const wsScheme = window.location.protocol === "https:" ? "wss://" : "ws://";
-  chatSocket = new WebSocket(
-    wsScheme + window.location.host + '/ws/chat/' + activeConvId + '/'
-  );
-  chatSocket.onopen = function(e) {
-    enableChatInput();
-  }
-  chatSocket.onclose = function(e) {
-    disableChatInput();
-    hideTypingIndicator();
-    console.error('Chat socket closed unexpectedly');
-  };
-  chatSocket.onmessage = function(e) {
-      const data = JSON.parse(e.data);
-      appendMessage(data.role, data.name, data.content, data.timestamp, data.citations, true);
-      if(typingEl) {
-          // if the 'llm is thinking' indicator is on, then it'll scroll up wrongly
-          hideTypingIndicator();
-          if (data.role !== "bot") {
-              // but if this wasn't a bot, then it should come back
-              showTypingIndicator();
-          }
-      }
+  // Connect to chat WebSocket using new manager
+  if (window.ChatWebSocket) {
+    // Set up callbacks
+    window.ChatWebSocket.setOnOpenCallback(() => {
+      enableChatInput();
+    });
+
+    window.ChatWebSocket.setOnCloseCallback(() => {
+      disableChatInput();
+      hideTypingIndicator();
+    });
+
+    window.ChatWebSocket.setOnChatMessageCallback((data) => {
+      // User message echoed back
+      appendMessage(
+        data.role,
+        data.name,
+        data.content,
+        data.timestamp,
+        data.citations,
+        true,
+      );
       scrollToBottom();
-  };
+    });
+
+    window.ChatWebSocket.setOnChatReplyCallback((data) => {
+      // AI response
+      appendMessage(
+        data.role,
+        data.name,
+        data.content,
+        data.timestamp,
+        data.citations,
+        true,
+      );
+      scrollToBottom();
+    });
+
+    // Connect
+    window.ChatWebSocket.connect(activeConvId);
+  }
+
+  // Connect to status WebSocket and listen for AI thinking events
+  if (window.StatusWebSocket) {
+    window.StatusWebSocket.connect(activeConvId);
+    window.StatusWebSocket.onStatusChange((status) => {
+      if (status.type === "thinking_start") {
+        showTypingIndicator();
+      } else if (status.type === "thinking_end") {
+        hideTypingIndicator();
+      }
+    });
+  }
 
   // Load from store or API, then cache
   if (!histories.has(activeConvId)) {
@@ -315,13 +365,21 @@ async function setActiveChat(chatId) {
 /** Render a list of messages to the DOM */
 function renderMessages(messages = []) {
   chatMessages.innerHTML = "";
-  messages.forEach(m => appendMessage(m.role, m.name, m.text, m.timestamp, m.citations, false));
+  messages.forEach((m) =>
+    appendMessage(m.role, m.name, m.text, m.timestamp, m.citations, false),
+  );
   scrollToBottom();
 }
 
 /** Append a single message; optionally save to store */
-function appendMessage(role, name, text, timestamp = null, citations = [], save = true) {
-
+function appendMessage(
+  role,
+  name,
+  text,
+  timestamp = null,
+  citations = [],
+  save = true,
+) {
   const wrapper = document.createElement("div");
   wrapper.className = `message ${role}`;
 
@@ -342,7 +400,7 @@ function appendMessage(role, name, text, timestamp = null, citations = [], save 
   // Add timestamp if provided
   const timeSpan = document.createElement("span");
   timeSpan.className = "timestamp";
-  timeSpan.textContent = `${name} | ` +  formatTime(timestamp);
+  timeSpan.textContent = `${name} | ` + formatTime(timestamp);
   bubble.appendChild(timeSpan);
 
   wrapper.appendChild(bubble);
@@ -397,7 +455,7 @@ function appendMessage(role, name, text, timestamp = null, citations = [], save 
 
   if (save && activeConvId) {
     const arr = histories.get(activeConvId) || [];
-    arr.push({ role, text, timestamp, citations});
+    arr.push({ role, text, timestamp, citations });
     histories.set(activeConvId, arr);
   }
 }
@@ -411,15 +469,15 @@ function handleSend() {
   const text = chatInput.value.trim();
   if (!text) return;
 
-  chatSocket.send(JSON.stringify({
-    'message': text
-  }));
+  // Send via ChatWebSocket manager
+  if (window.ChatWebSocket) {
+    window.ChatWebSocket.sendMessage(text);
+  }
 
   scrollToBottom();
   chatInput.value = "";
-  if(text.toLowerCase().startsWith("@llm")) {
-      showTypingIndicator();
-  }
+  // Note: Typing indicator is now controlled by status WebSocket
+  // The backend will send thinking_start event when processing begins
 }
 
 // Event listeners
@@ -438,10 +496,9 @@ chatList.addEventListener("click", (e) => {
 // Initialize
 window.addEventListener("DOMContentLoaded", () => {
   //ensureActiveChat(); // auto-select first chat or create one
-    if(activeConvId) {
-        setActiveChat(activeConvId);
-    }
-    else{
-        console.error("No active conv ID found!")
-    }
+  if (activeConvId) {
+    setActiveChat(activeConvId);
+  } else {
+    console.error("No active conv ID found!");
+  }
 });

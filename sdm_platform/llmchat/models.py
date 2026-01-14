@@ -8,7 +8,7 @@ from psycopg import DatabaseError
 from psycopg import InterfaceError
 from psycopg import OperationalError
 
-from sdm_platform.llmchat.utils.graph import get_postgres_checkpointer
+from sdm_platform.llmchat.utils.graphs import get_postgres_checkpointer
 from sdm_platform.users.models import User
 
 logger = logging.getLogger(__name__)

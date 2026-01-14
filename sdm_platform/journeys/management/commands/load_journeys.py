@@ -43,6 +43,7 @@ class Command(BaseCommand):
         fixtures_dir = Path(options.get("dir", ""))
         force_update = options.get("force", False)
         skip_conversation_points = options.get("skip_conversation_points", False)
+        verbosity = options.get("verbosity", 1)
 
         if not fixtures_dir.exists():
             self.stdout.write(self.style.ERROR(f"Directory not found: {fixtures_dir}"))
@@ -58,7 +59,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("No journey JSON files found"))
             return
 
-        self.stdout.write(f"Found {len(json_files)} journey file(s) to process\n")
+        if verbosity > 0:
+            self.stdout.write(f"Found {len(json_files)} journey file(s) to process\n")
 
         # Process each journey file
         for json_file in json_files:
@@ -71,6 +73,7 @@ class Command(BaseCommand):
                     json_file,
                     force_update,
                     skip_conversation_points,
+                    verbosity,
                 )
             except Exception as e:
                 self.stdout.write(
@@ -78,16 +81,19 @@ class Command(BaseCommand):
                 )
                 logger.exception("Failed to load journey from file %s", json_file)
 
-        self.stdout.write(self.style.SUCCESS("\n✓ Journey loading complete"))
+        if verbosity > 0:
+            self.stdout.write(self.style.SUCCESS("\n✓ Journey loading complete"))
 
     def load_journey_from_file(
         self,
         json_file: Path,
         force_update: bool,  # noqa: FBT001
         skip_conversation_points: bool,  # noqa: FBT001
+        verbosity: int = 1,
     ):
         """Load or update a single journey from a JSON file."""
-        self.stdout.write(f"Processing: {json_file.name}")
+        if verbosity > 0:
+            self.stdout.write(f"Processing: {json_file.name}")
 
         with json_file.open() as f:
             data = json.load(f)
@@ -114,7 +120,7 @@ class Command(BaseCommand):
                 },
             )
 
-            if created:
+            if created and verbosity > 0:
                 self.stdout.write(
                     self.style.SUCCESS(f"  ✓ Created journey: {journey.title}")
                 )
@@ -137,10 +143,11 @@ class Command(BaseCommand):
                 journey.hero_image = data.get("hero_image", journey.hero_image)
 
                 journey.save()
-                self.stdout.write(
-                    self.style.SUCCESS(f"  ✓ Updated journey: {journey.title}")
-                )
-            else:
+                if verbosity > 0:
+                    self.stdout.write(
+                        self.style.SUCCESS(f"  ✓ Updated journey: {journey.title}")
+                    )
+            elif verbosity > 0:
                 self.stdout.write(
                     self.style.WARNING(
                         f"  → Journey '{slug}' already exists (use --force to update)"
@@ -150,7 +157,7 @@ class Command(BaseCommand):
             # Step 2: Load options (always process on create, or on force_update)
             options_data = data.get("options", [])
             if options_data and (created or force_update):
-                self._load_options(journey, options_data, force_update)
+                self._load_options(journey, options_data, force_update, verbosity)
 
             # Step 3: Load conversation points if present
             if not skip_conversation_points:
@@ -160,6 +167,7 @@ class Command(BaseCommand):
                         journey,
                         conversation_points_data,
                         force_update,
+                        verbosity,
                     )
 
     def _load_options(
@@ -167,13 +175,14 @@ class Command(BaseCommand):
         journey: Journey,
         options_data: list,
         force_update: bool,  # noqa: FBT001
+        verbosity: int = 1,
     ):
         """Load or update options for a journey."""
         if force_update:
             # Remove existing options that aren't in the new data
             existing_slugs = {opt["slug"] for opt in options_data if "slug" in opt}
             deleted_count, _ = journey.options.exclude(slug__in=existing_slugs).delete()
-            if deleted_count:
+            if deleted_count and verbosity > 0:
                 self.stdout.write(f"    Removed {deleted_count} old option(s)")
 
         for idx, opt_data in enumerate(options_data):
@@ -199,16 +208,18 @@ class Command(BaseCommand):
                 },
             )
 
-            action = "Created" if opt_created else "Updated"
-            self.stdout.write(
-                self.style.SUCCESS(f"    ✓ {action} option: {option.title}")
-            )
+            if verbosity > 0:
+                action = "Created" if opt_created else "Updated"
+                self.stdout.write(
+                    self.style.SUCCESS(f"    ✓ {action} option: {option.title}")
+                )
 
     def _load_conversation_points(
         self,
         journey: Journey,
         conversation_points_data: list,
         force_update: bool,  # noqa: FBT001
+        verbosity: int = 1,
     ):
         """Load or update conversation points for a journey."""
 
@@ -220,7 +231,7 @@ class Command(BaseCommand):
             deleted_count, _ = journey.conversation_points.exclude(
                 slug__in=existing_slugs
             ).delete()
-            if deleted_count:
+            if deleted_count and verbosity > 0:
                 self.stdout.write(
                     f"    Removed {deleted_count} old conversation point(s)"
                 )
@@ -251,7 +262,8 @@ class Command(BaseCommand):
                 },
             )
 
-            action = "Created" if cp_created else "Updated"
-            self.stdout.write(
-                self.style.SUCCESS(f"    ✓ {action} conversation point: {cp.title}")
-            )
+            if verbosity > 0:
+                action = "Created" if cp_created else "Updated"
+                self.stdout.write(
+                    self.style.SUCCESS(f"    ✓ {action} conversation point: {cp.title}")
+                )

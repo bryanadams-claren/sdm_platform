@@ -82,3 +82,49 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(
             text_data=event["content"],  # already formatted
         )
+
+
+class StatusConsumer(AsyncWebsocketConsumer):
+    """WebSocket consumer for AI processing status updates"""
+
+    async def connect(self):
+        """Connect to status group for the conversation"""
+        username = get_useremail_from_scope(self.scope)
+        if conv_id := (
+            self.scope.get("url_route", {}).get("kwargs", {}).get("conv_id", "")
+        ):
+            self.thread_name = format_thread_id(username, conv_id)
+            self.status_group = f"status_{self.thread_name}"
+        else:
+            self.thread_name = format_thread_id(username, "NoThreadIDAvailable")
+            self.status_group = f"status_{self.thread_name}"
+
+        await self.channel_layer.group_add(
+            self.status_group,
+            self.channel_name,
+        )
+        logger.info("Status connection opened for thread %s", self.thread_name)
+        await self.accept()
+
+    async def disconnect(self, code):
+        """Disconnect from status group"""
+        await self.channel_layer.group_discard(self.status_group, self.channel_name)
+        logger.info("Status connection closed for thread %s", self.thread_name)
+
+    async def receive(
+        self,
+        text_data: str | None = None,
+        bytes_data: bytes | None = None,
+    ) -> None:
+        """Handle ping messages for keepalive"""
+        if text_data is None:
+            return
+        text_data_json = json.loads(text_data)
+        if text_data_json.get("type") == "ping":
+            await self.send(text_data=json.dumps({"type": "pong"}))
+
+    async def status_update(self, event):
+        """Receive status updates from group and send to WebSocket"""
+        await self.send(
+            text_data=json.dumps(event["data"]),
+        )

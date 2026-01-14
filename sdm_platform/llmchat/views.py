@@ -12,8 +12,8 @@ from langchain_core.runnables import RunnableConfig
 from .models import Conversation
 from .utils.chat_history import get_chat_history
 from .utils.format import format_message
-from .utils.graph import get_compiled_rag_graph
-from .utils.graph import get_postgres_checkpointer
+from .utils.graphs import get_compiled_graph
+from .utils.graphs import get_postgres_checkpointer
 
 
 @login_required
@@ -72,7 +72,7 @@ def history(request, conv_id):
 
     data = {}
     with get_postgres_checkpointer() as checkpointer:
-        graph = get_compiled_rag_graph(checkpointer)
+        graph = get_compiled_graph(checkpointer)
         full_history = list(graph.get_state_history(config=config))
         chat_history = get_chat_history(full_history)
         msg_list = []

@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('journeys', '0100_load_journeys'),
+        ('journeys', '0001_initial'),
         ('memory', '0001_setup_postgres_store'),
     ]
 

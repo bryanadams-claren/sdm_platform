@@ -340,3 +340,6 @@ sdm_platform/media/
 Procfile
 
 *.backup
+
+.claude
+.claude/*

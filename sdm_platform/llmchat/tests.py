@@ -31,8 +31,8 @@ from sdm_platform.llmchat.tasks import send_llm_reply
 from sdm_platform.llmchat.utils.chat_history import get_chat_history
 from sdm_platform.llmchat.utils.format import format_message
 from sdm_platform.llmchat.utils.format import format_thread_id
-from sdm_platform.llmchat.utils.graph import get_compiled_rag_graph
-from sdm_platform.llmchat.utils.graph import get_postgres_checkpointer
+from sdm_platform.llmchat.utils.graphs import get_compiled_graph
+from sdm_platform.llmchat.utils.graphs import get_postgres_checkpointer
 from sdm_platform.memory.managers import UserProfileManager
 from sdm_platform.memory.store import get_memory_store
 from sdm_platform.users.models import User
@@ -266,7 +266,7 @@ class HistoryViewTest(TestCase):
         self.assertIn("/accounts/login/", response.url)  # pyright: ignore[reportAttributeAccessIssue]
 
     @patch("sdm_platform.llmchat.views.get_postgres_checkpointer")
-    @patch("sdm_platform.llmchat.views.get_compiled_rag_graph")
+    @patch("sdm_platform.llmchat.views.get_compiled_graph")
     @patch("sdm_platform.llmchat.views.get_chat_history")
     def test_history_view_returns_messages(
         self,
@@ -499,7 +499,7 @@ class TasksTest(TestCase):
     @patch("sdm_platform.llmchat.tasks.async_to_sync")
     @patch("sdm_platform.llmchat.tasks.get_channel_layer")
     @patch("sdm_platform.llmchat.tasks.get_postgres_checkpointer")
-    @patch("sdm_platform.llmchat.tasks.get_compiled_rag_graph")
+    @patch("sdm_platform.llmchat.tasks.get_compiled_graph")
     def test_send_llm_reply_basic(
         self,
         mock_get_graph,
@@ -553,7 +553,7 @@ class TasksTest(TestCase):
     @patch("sdm_platform.llmchat.tasks.async_to_sync")
     @patch("sdm_platform.llmchat.tasks.get_channel_layer")
     @patch("sdm_platform.llmchat.tasks.get_postgres_checkpointer")
-    @patch("sdm_platform.llmchat.tasks.get_compiled_rag_graph")
+    @patch("sdm_platform.llmchat.tasks.get_compiled_graph")
     def test_send_llm_reply_with_citations(
         self,
         mock_get_graph,
@@ -617,7 +617,7 @@ class TasksTest(TestCase):
     @patch("sdm_platform.llmchat.tasks.async_to_sync")
     @patch("sdm_platform.llmchat.tasks.get_channel_layer")
     @patch("sdm_platform.llmchat.tasks.get_postgres_checkpointer")
-    @patch("sdm_platform.llmchat.tasks.get_compiled_rag_graph")
+    @patch("sdm_platform.llmchat.tasks.get_compiled_graph")
     def test_send_llm_reply_no_ai_response(
         self,
         mock_get_graph,
@@ -958,8 +958,8 @@ class GraphWithMemoryTest(TestCase):
             password="testpass123",
         )
 
-    @patch("sdm_platform.llmchat.utils.graph.init_chat_model")
-    @patch("sdm_platform.llmchat.utils.graph.get_chroma_client")
+    @patch("sdm_platform.llmchat.utils.graphs.base.init_chat_model")
+    @patch("sdm_platform.llmchat.utils.graphs.nodes.retrieval.get_chroma_client")
     def test_graph_loads_user_profile_context(self, mock_chroma, mock_init_model):
         """Test that the graph loads user profile and includes it in context."""
         # Create a user profile
@@ -985,7 +985,7 @@ class GraphWithMemoryTest(TestCase):
 
         # Build the graph with store
         with get_postgres_checkpointer() as checkpointer, get_memory_store() as store:
-            graph = get_compiled_rag_graph(checkpointer, store=store)
+            graph = get_compiled_graph(checkpointer, store=store)
 
             # Invoke the graph with user_id in config
             config = RunnableConfig(
@@ -1016,8 +1016,8 @@ class GraphWithMemoryTest(TestCase):
         self.assertIn("Jane", user_context)
         self.assertIn("prefers to be called", user_context)
 
-    @patch("sdm_platform.llmchat.utils.graph.init_chat_model")
-    @patch("sdm_platform.llmchat.utils.graph.get_chroma_client")
+    @patch("sdm_platform.llmchat.utils.graphs.base.init_chat_model")
+    @patch("sdm_platform.llmchat.utils.graphs.nodes.retrieval.get_chroma_client")
     def test_graph_includes_profile_in_rag_system_message(
         self, mock_chroma, mock_init_model
     ):
@@ -1061,13 +1061,16 @@ class GraphWithMemoryTest(TestCase):
         # Patch Chroma constructor to return our mock
         mock_chroma.return_value = mock_client
 
-        with patch("sdm_platform.llmchat.utils.graph.Chroma", return_value=mock_vs):
+        with patch(
+            "sdm_platform.llmchat.utils.graphs.nodes.retrieval.Chroma",
+            return_value=mock_vs,
+        ):
             # Build the graph
             with (
                 get_postgres_checkpointer() as checkpointer,
                 get_memory_store() as store,
             ):
-                graph = get_compiled_rag_graph(checkpointer, store=store)
+                graph = get_compiled_graph(checkpointer, store=store)
 
                 config = RunnableConfig(
                     configurable={
@@ -1109,8 +1112,8 @@ class GraphWithMemoryTest(TestCase):
                 self.assertIn("Bob", system_message.content)
                 self.assertIn("June 20", system_message.content)
 
-    @patch("sdm_platform.llmchat.utils.graph.init_chat_model")
-    @patch("sdm_platform.llmchat.utils.graph.get_chroma_client")
+    @patch("sdm_platform.llmchat.utils.graphs.base.init_chat_model")
+    @patch("sdm_platform.llmchat.utils.graphs.nodes.retrieval.get_chroma_client")
     def test_graph_works_without_profile(self, mock_chroma, mock_init_model):
         """Test that the graph works normally when no profile exists."""
         # Mock the LLM to return a proper AIMessage
@@ -1125,7 +1128,7 @@ class GraphWithMemoryTest(TestCase):
 
         # Build the graph
         with get_postgres_checkpointer() as checkpointer, get_memory_store() as store:
-            graph = get_compiled_rag_graph(checkpointer, store=store)
+            graph = get_compiled_graph(checkpointer, store=store)
 
             config = RunnableConfig(
                 configurable={

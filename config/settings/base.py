@@ -402,3 +402,10 @@ SOCIALACCOUNT_PROVIDERS = {
 
 DEFAULT_CONV_ID = "main_chat"
 AI_ASSISTANT_NAME = "AI Assistant"
+
+# LLM Graph Configuration
+# ------------------------------------------------------------------------------
+# Available modes: "assistant", "autonomous"
+# - assistant: LLM only responds to messages starting with @llm (default)
+# - autonomous: LLM responds to every human message (1:1 chat)
+LLM_GRAPH_MODE = env("LLM_GRAPH_MODE", default="autonomous")

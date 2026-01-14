@@ -85,6 +85,9 @@
 {% endblock body %}
 {% block user_javascript %}
   {% compress js %}
+    <script defer src="{% static 'js/websocket-base.js' %}"></script>
+    <script defer src="{% static 'js/chat-websocket.js' %}"></script>
+    <script defer src="{% static 'js/status-websocket.js' %}"></script>
     <script defer src="{% static 'js/conversationpoints.js' %}"></script>
     <script defer src="{% static 'js/chat.js' %}"></script>
   {% endcompress %}

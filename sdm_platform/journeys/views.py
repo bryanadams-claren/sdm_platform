@@ -15,6 +15,7 @@ from sdm_platform.llmchat.models import Conversation
 from sdm_platform.llmchat.tasks import send_ai_initiated_message
 from sdm_platform.llmchat.utils.format import format_thread_id
 from sdm_platform.memory.managers import UserProfileManager
+from sdm_platform.users.emails import send_welcome_email
 from sdm_platform.users.models import User
 
 from .models import Journey
@@ -187,13 +188,16 @@ def handle_onboarding_submission(request, journey):
             )
 
             if created:
-                # Set a random password for security
+                # Set unusable password - user will set via email link
                 user.set_unusable_password()
                 user.save()
                 # Update user profile with name
                 UserProfileManager.update_profile(
                     user_id=user.email, updates={"name": name}, source="user_input"
                 )
+                # Send welcome email with password setup link
+                send_welcome_email(user, request=request)
+                logger.info(f"New user created and welcome email sent: {user.email}")
 
             # Log them in
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")

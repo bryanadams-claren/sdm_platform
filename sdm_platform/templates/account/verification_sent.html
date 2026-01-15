@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  Magic Link Sent - Claren Health
+{% endblock title %}
+{% block content %}
+  <div class="container mt-5 pt-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm">
+          <div class="card-body p-5 text-center">
+            <div class="mb-4">
+              <i class="bi bi-envelope-check icon-xlarge"></i>
+            </div>
+            <h2 class="card-title mb-4">Check Your Email</h2>
+            <p class="text-muted mb-4">
+              We've sent a magic login link to your email. Click the link in the email to sign in instantly.
+            </p>
+            <div class="alert alert-warning">
+              <strong>Quick!</strong> The link expires in 3 minutes for security.
+            </div>
+            <p class="text-muted mt-4">
+              <small>Didn't receive it? Check your spam folder or request a new link.</small>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

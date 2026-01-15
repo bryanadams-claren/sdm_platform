@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+  Sign In - Claren Health
+{% endblock title %}
+{% block content %}
+  <div class="container mt-5 pt-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm">
+          <div class="card-body p-5">
+            <h2 class="card-title text-center mb-4">Welcome Back</h2>
+            {% if messages %}
+              {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show"
+                     role="alert">
+                  {{ message }}
+                  <button type="button"
+                          class="btn-close"
+                          data-bs-dismiss="alert"
+                          aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+            <form method="post" action="{% url 'account_login' %}">
+              {% csrf_token %}
+              {{ form|crispy }}
+              <div class="d-grid gap-2 mb-3">
+                <button type="submit" class="btn btn-primary btn-lg">Sign In</button>
+              </div>
+              {% if redirect_field_value %}
+                <input type="hidden"
+                       name="{{ redirect_field_name }}"
+                       value="{{ redirect_field_value }}" />
+              {% endif %}
+            </form>
+            <div class="text-center mb-3">
+              <a href="{% url 'account_reset_password' %}"
+                 class="text-decoration-none">Forgot your password?</a>
+            </div>
+            <hr class="my-4" />
+            <div class="text-center mb-3">
+              <p class="text-muted mb-2">Or sign in with:</p>
+              <a href="{% url 'google_login' %}"
+                 class="btn btn-outline-primary btn-lg w-100 mb-2">
+                <i class="bi bi-google"></i> Continue with Google
+              </a>
+              <a href="{% url 'account_request_login_code' %}"
+                 class="btn btn-outline-success btn-lg w-100">
+                <i class="bi bi-envelope"></i> Email Me a Magic Link
+              </a>
+            </div>
+            <div class="text-center mt-4">
+              <small class="text-muted">
+                Don't have an account? Complete our <a href="{% url 'home' %}">health assessment</a> to get started.
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

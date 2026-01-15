@@ -1,0 +1,12 @@
+Hi{{ user.name|default:"" }}{% if user.name %} {{ user.name }}{% endif %},
+
+You requested a magic login link for Claren Health.
+
+Click here to log in: {{ login_url }}
+
+This link will expire in 3 minutes for security.
+
+If you didn't request this, please ignore this email.
+
+Best regards,
+The Claren Health Team

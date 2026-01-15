@@ -1,4 +1,4 @@
-# ruff: noqa: PT009, S106, PLC0415, PLR2004, PT027
+# ruff: noqa: S106, PLC0415, PLR2004, PT027
 # PT009 is assert stuff
 # S106 is passwords
 # PLC0415 is local imports
@@ -967,7 +967,9 @@ class ConversationPointExtractionTaskTest(TestCase):
             password="testpass123",
         )
 
-    def _create_mock_conversation_point(self, slug, title, keywords):
+    def _create_mock_conversation_point(
+        self, slug, title, keywords, *, clear_existing=True
+    ):
         """Helper to create a mock ConversationPoint."""
         from sdm_platform.journeys.models import Journey
         from sdm_platform.memory.models import ConversationPoint
@@ -980,6 +982,11 @@ class ConversationPointExtractionTaskTest(TestCase):
                 "description": "Test journey",
             },
         )
+
+        # Clear existing conversation points for this journey if requested
+        # (prevents interference from fixture data)
+        if clear_existing:
+            ConversationPoint.objects.filter(journey=journey).delete()
 
         # Create conversation point
         point, _ = ConversationPoint.objects.get_or_create(

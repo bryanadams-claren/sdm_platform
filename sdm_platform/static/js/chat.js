@@ -2,14 +2,6 @@ const chatMessages = document.getElementById("chatMessages");
 const chatInput = document.getElementById("chatInput");
 const sendBtn = document.getElementById("sendBtn");
 const chatList = document.getElementById("chatList");
-//const newChatBtn    = document.getElementById("newChatBtn");
-const newChatForm = document.getElementById("newChatForm");
-const chatSubject = document.getElementById("chatSubject");
-
-// The CSRF token for making new conversation POST requests
-const csrfToken = document.querySelector(
-  'input[name="csrfmiddlewaretoken"]',
-).value;
 
 // In-memory store of histories: { [chatId]: Array<{role, name,text, etc.}> }
 const histories = new Map();
@@ -203,69 +195,6 @@ async function apiFetchChatHistory(convId) {
     });
   return chat_hist;
 }
-
-/** Handle creating new chats from the modal window */
-newChatForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const subject = chatSubject.value.trim();
-  if (!subject) return;
-
-  const new_conv_id = String(Date.now());
-  histories.set(new_conv_id, [
-    {
-      role: "bot",
-      name: "AI Assistant",
-      text: `👋 New conversation: ${subject}`,
-    },
-  ]);
-
-  const node = document.createElement("div");
-  node.className = "chat-item";
-  node.dataset.id = new_conv_id;
-  node.textContent = `💬 ${subject}`;
-  chatList.prepend(node);
-
-  fetch("/chat/conversation/" + new_conv_id + "/", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": csrfToken,
-    },
-    body: JSON.stringify({
-      title: subject,
-    }),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      //return response.json(); // Or response.text() if expecting plain text
-    })
-    .then((data) => {
-      console.log("Success:", data);
-    })
-    .catch((error) => {
-      console.error("Error:", error);
-    });
-
-  // Hide modal & reset
-  const modal = bootstrap.Modal.getInstance(
-    document.getElementById("newChatModal"),
-  );
-  modal.hide();
-  chatSubject.value = "";
-
-  setActiveChat(new_conv_id);
-});
-
-// Allow Enter key inside subject input to submit form
-chatSubject.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault(); // prevent accidental newline
-    newChatForm.requestSubmit(); // programmatically submit the form
-  }
-});
 
 /** Set the active chat by id, open the socket to that chat, and load/render its messages */
 async function setActiveChat(chatId) {

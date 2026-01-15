@@ -1,0 +1,15 @@
+Hi {{ user.name }},
+
+Welcome to Claren Health! We're excited to support you on your health journey.
+
+Your account has been created with email: {{ user.email }}
+
+To secure your account, you can set a password using this link:
+{{ password_reset_url }}
+
+Alternatively, you can log in anytime using a magic link - just visit our login page and click "Email me a magic link" for passwordless access.
+
+If you have any questions, please don't hesitate to reach out.
+
+Best regards,
+The Claren Health Team

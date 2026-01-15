@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your Login Link - Claren Health</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #ffffff;
+      }
+
+      .header {
+        text-align: center;
+        padding: 20px 0;
+        border-bottom: 2px solid #28a745;
+      }
+
+      .header h1 {
+        color: #28a745;
+        margin: 0;
+        font-size: 28px;
+      }
+
+      .content {
+        padding: 30px 20px;
+      }
+
+      .button {
+        display: inline-block;
+        padding: 14px 28px;
+        background-color: #28a745;
+        color: white !important;
+        text-decoration: none;
+        border-radius: 4px;
+        margin: 20px 0;
+        font-weight: bold;
+      }
+
+      .button:hover {
+        background-color: #218838;
+      }
+
+      .warning {
+        background-color: #fff3cd;
+        padding: 15px;
+        border-left: 4px solid #ffc107;
+        margin: 20px 0;
+      }
+
+      .footer {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+        font-size: 12px;
+        color: #666;
+        text-align: center;
+      }
+
+      .text-center {
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Your Login Link</h1>
+      </div>
+      <div class="content">
+        <p>
+          Hi
+          {% if user.name %}{{ user.name }}{% endif %}
+          ,
+        </p>
+        <p>You requested a magic login link for Claren Health.</p>
+        <div class="text-center">
+          <a href="{{ login_url }}" class="button">Log In to Claren Health</a>
+        </div>
+        <div class="warning">
+          <strong>⚠️ Security Notice:</strong> This link will expire in 3 minutes.
+        </div>
+        <p>If you didn't request this, please ignore this email.</p>
+        <p>
+          Best regards,
+          <br />
+          <strong>The Claren Health Team</strong>
+        </p>
+      </div>
+      <div class="footer">
+        <p>This email was sent to {{ user.email }}.</p>
+      </div>
+    </div>
+  </body>
+</html>

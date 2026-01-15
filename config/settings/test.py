@@ -11,7 +11,7 @@ from .base import env
 # https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
 SECRET_KEY = env(
     "DJANGO_SECRET_KEY",
-    default="4qBiI4StwQrPE8gErM1b3JPQVLzpQJXJkBf9Ha9ngTQQsoM3GFSP599ss9HV8jsx",
+    default="4qBiI4StwQrPE8gErM1b3JPQVLzpQJXJkBf9Ha9ngTQQsoM3GFSP599ss9HV8jsx",  # pyright: ignore[reportArgumentType]
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#test-runner
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
@@ -44,8 +44,8 @@ SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "APPS": [
             {
-                "client_id": env("GOOGLE_CLIENT_ID", default="test-client-id"),
-                "secret": env("GOOGLE_CLIENT_SECRET", default="test-secret"),
+                "client_id": env("GOOGLE_CLIENT_ID", default="test-client-id"),  # pyright: ignore[reportArgumentType]
+                "secret": env("GOOGLE_CLIENT_SECRET", default="test-secret"),  # pyright: ignore[reportArgumentType]
             },
         ],
     },

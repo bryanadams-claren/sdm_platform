@@ -349,6 +349,16 @@ ACCOUNT_FORMS = {"signup": "sdm_platform.users.forms.UserSignupForm"}
 SOCIALACCOUNT_ADAPTER = "sdm_platform.users.adapters.SocialAccountAdapter"
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_FORMS = {"signup": "sdm_platform.users.forms.UserSocialSignupForm"}
+# Enable magic link login (passwordless)
+ACCOUNT_LOGIN_BY_CODE_ENABLED = True
+# Timeout for login codes (3 minutes)
+ACCOUNT_LOGIN_BY_CODE_TIMEOUT = 3 * 60
+# Max attempts for login code
+ACCOUNT_LOGIN_BY_CODE_MAX_ATTEMPTS = 3
+# Don't automatically log in after password reset
+ACCOUNT_LOGIN_ON_PASSWORD_RESET = False
+# Automatically log in after email verification
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 # django-compressor
 # ------------------------------------------------------------------------------
 # https://django-compressor.readthedocs.io/en/latest/quickstart/#installation
@@ -384,8 +394,8 @@ SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "APPS": [
             {
-                "client_id": env("GOOGLE_CLIENT_ID"),
-                "secret": env("GOOGLE_CLIENT_SECRET"),
+                "client_id": env("GOOGLE_CLIENT_ID", default=""),  # pyright: ignore[reportArgumentType]
+                "secret": env("GOOGLE_CLIENT_SECRET", default=""),  # pyright: ignore[reportArgumentType]
             },
         ],
         "SCOPE": [
@@ -408,4 +418,4 @@ AI_ASSISTANT_NAME = "AI Assistant"
 # Available modes: "assistant", "autonomous"
 # - assistant: LLM only responds to messages starting with @llm (default)
 # - autonomous: LLM responds to every human message (1:1 chat)
-LLM_GRAPH_MODE = env("LLM_GRAPH_MODE", default="autonomous")
+LLM_GRAPH_MODE = env("LLM_GRAPH_MODE", default="autonomous")  # pyright: ignore[reportArgumentType]

@@ -40,6 +40,59 @@ footer {
   text-align: center;
 }
 
+/* Large decorative icons */
+.icon-large {
+  font-size: 3rem;
+  color: #6c757d;
+}
+
+.icon-xlarge {
+  font-size: 4rem;
+  color: #28a745;
+}
+
+.qr-code-image {
+  max-width: 250px;
+}
+
+/* Avatar styles */
+.avatar-small {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+}
+
+.avatar-medium {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+}
+
+.avatar-large {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+}
+
+.avatar-initial {
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.avatar-initial-medium {
+  width: 80px;
+  height: 80px;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+/* Inherit color from parent */
+.color-inherit {
+  color: inherit;
+}
+
 /* Modern home page styles */
 
 /* Hero gradient section */
@@ -208,11 +261,6 @@ footer {
   border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
-}
-.sidebar-header {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
-  background: #fff;
 }
 .chat-list {
   flex: 1;

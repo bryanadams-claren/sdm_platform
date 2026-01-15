@@ -1,0 +1,11 @@
+{% load account %}{% user_display user as user_display %}Hi {{ user_display }},
+
+Thank you for registering with Claren Health!
+
+To confirm your email address and activate your account, please click the link below:
+{{ activate_url }}
+
+If you didn't create an account with Claren Health, you can safely ignore this email.
+
+Best regards,
+The Claren Health Team

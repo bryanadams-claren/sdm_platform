@@ -1,5 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core.exceptions import PermissionDenied
 from django.db.models import QuerySet
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -15,13 +16,29 @@ class UserDetailView(LoginRequiredMixin, DetailView):
     slug_field = "id"
     slug_url_kwarg = "id"
 
+    def get_object(self, queryset: QuerySet | None = None) -> User:
+        obj = super().get_object(queryset)
+        # Only allow users to view their own profile
+        if obj != self.request.user:
+            msg = "Access denied"
+            raise PermissionDenied(msg)
+        return obj
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add user's conversations to the context
+        context["conversations"] = self.object.conversations.select_related(
+            "journey"
+        ).order_by("-created_at")
+        return context
+
 
 user_detail_view = UserDetailView.as_view()
 
 
 class UserUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     model = User
-    fields = ["name"]
+    fields = ["name", "avatar"]
     success_message = _("Information successfully updated")
 
     def get_success_url(self) -> str:

@@ -122,7 +122,8 @@ ignore = [
   "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
   "COM812", # requested by the pre-commit tool
   "SIM102", # sometimes it's better to nest
-  # of types for comparison.
+  "PT009", # Use a regular `assert` instead of unittest-style `assertEqual`
+  "G004", # Fine to use f-strings in logging
   # Deactivated because it can make the code slow:
   # https://github.com/astral-sh/ruff/issues/7871
 ]

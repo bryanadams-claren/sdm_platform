@@ -40,6 +40,13 @@ EMAIL_BACKEND = env.str(
     "DJANGO_EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend",  # type: ignore[call-overload]
 )
+# https://docs.djangoproject.com/en/dev/ref/settings/#default-from-email
+DEFAULT_FROM_EMAIL = env.str(
+    "DJANGO_DEFAULT_FROM_EMAIL",
+    default="Claren Health <support@localhost>",  # type: ignore[call-overload]
+)
+# https://docs.djangoproject.com/en/dev/ref/settings/#server-email
+SERVER_EMAIL = env.str("DJANGO_SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)  # type: ignore[call-overload]
 
 # django-debug-toolbar
 # ------------------------------------------------------------------------------

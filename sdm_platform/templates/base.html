@@ -39,7 +39,7 @@
       <!-- Navbar -->
       <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
         <div class="container">
-          <a class="navbar-brand fw-bold" href="#">Claren Health</a>
+          <a class="navbar-brand fw-bold" href="{% url 'home' %}">Claren Health</a>
           <button class="navbar-toggler"
                   type="button"
                   data-bs-toggle="collapse"
@@ -51,33 +51,29 @@
           </button>
           <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
             <ul class="navbar-nav">
-              <li class="nav-item">
-                <a class="nav-link" href="#contact">Contact</a>
-              </li>
-              {% comment %}
-              <li class="nav-item">
-                <a class="nav-link" href="#about">About</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="#stakeholders">Who We Serve</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="#contact">Contact</a>
-              </li>
+              {% if request.resolver_match.url_name == 'home' %}
+                <li class="nav-item">
+                  <a class="nav-link" href="#contact">Contact</a>
+                </li>
+              {% endif %}
               {% if request.user.is_authenticated %}
                 <li class="nav-item">
-                  <!--<a class="nav-link" href="/chat/conversation/">Conversations</a>-->
-                  <a class="nav-link" href="{% url 'chat_conversation_top' %}">Conversations</a>
+                  <a class="nav-link" href="{% url 'users:detail' request.user.pk %}">
+                    <i class="bi bi-person-circle"></i> Profile
+                  </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="{% url 'users:detail' request.user.pk %}">{% translate "Profile" %}</a>
+                  <a class="nav-link" href="{% url 'account_logout' %}">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                  </a>
                 </li>
               {% else %}
                 <li class="nav-item">
-                  <a class="nav-link" href="{% url 'account_login' %}">{% translate "Login" %}</a>
+                  <a class="nav-link" href="{% url 'account_login' %}">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                  </a>
                 </li>
               {% endif %}
-              {% endcomment %}
             </ul>
           </div>
         </div>

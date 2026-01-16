@@ -8,6 +8,7 @@
 // Track the currently loaded conversation points
 let currentConversationPoints = [];
 let pointsRefreshInterval = null;
+let summaryReady = false;
 
 /**
  * Fetch conversation points from the API
@@ -192,6 +193,9 @@ async function loadConversationPoints(convId) {
   if (data.success) {
     currentConversationPoints = data.points;
     renderConversationPoints(data.points, data.journey_title || "Journey");
+
+    // After rendering points, check for summary (header now exists)
+    checkSummaryStatus(convId);
   } else {
     console.error("Failed to load conversation points:", data.error);
     // Optionally show an error message in the sidebar
@@ -290,10 +294,75 @@ function showAIThinkingIndicator(pointTitle) {
   console.log(`AI is preparing to discuss: ${pointTitle}`);
 }
 
+/**
+ * Check if conversation summary PDF is ready for download
+ * @param {string} convId - The conversation ID
+ */
+async function checkSummaryStatus(convId) {
+  try {
+    const response = await fetch(
+      `/memory/conversation/${convId}/summary/status/`,
+    );
+    if (!response.ok) {
+      console.error(`HTTP error checking summary status: ${response.status}`);
+      return;
+    }
+    const data = await response.json();
+
+    if (data.ready && !summaryReady) {
+      summaryReady = true;
+      showDownloadButton(data.download_url);
+    }
+  } catch (error) {
+    console.error("Error checking summary status:", error);
+  }
+}
+
+/**
+ * Display the download summary button in the header
+ * @param {string} downloadUrl - URL to download the PDF
+ */
+function showDownloadButton(downloadUrl) {
+  const header = document.querySelector(".conversation-points-header");
+
+  if (!header) {
+    console.error("[Summary] No .conversation-points-header element found!");
+    return;
+  }
+
+  if (document.getElementById("downloadSummaryBtn")) {
+    return;
+  }
+
+  const btn = document.createElement("a");
+  btn.id = "downloadSummaryBtn";
+  btn.href = downloadUrl;
+  btn.className = "btn btn-success btn-sm mt-2 w-100";
+  btn.innerHTML = '<i class="bi bi-download me-1"></i> Download Summary PDF';
+  header.appendChild(btn);
+}
+
+/**
+ * Start checking for summary status
+ * @param {string} convId - The conversation ID
+ */
+function startSummaryCheck(convId) {
+  if (!convId) {
+    return;
+  }
+
+  // Note: Initial check is now done after loadConversationPoints completes
+  // This ensures the header element exists before we try to add the button
+
+  // Check every 30 seconds (uses same interval as points refresh)
+  setInterval(() => checkSummaryStatus(convId), 30000);
+}
+
 // Export for use in other scripts
 window.ConversationPoints = {
   load: loadConversationPoints,
   startRefresh: startPointsRefresh,
   stopRefresh: stopPointsRefresh,
   getCurrent: () => currentConversationPoints,
+  startSummaryCheck: startSummaryCheck,
 };

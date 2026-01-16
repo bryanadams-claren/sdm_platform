@@ -126,3 +126,66 @@ class ConversationPointMemory(BaseModel):
                 },
             }
         }
+
+
+class PointSummary(BaseModel):
+    """Summary of a single conversation point for PDF generation."""
+
+    title: str = Field(description="Conversation point title")
+    description: str = Field(description="Conversation point description")
+    extracted_points: list[str] = Field(
+        default_factory=list, description="Key points extracted from the discussion"
+    )
+    relevant_quotes: list[str] = Field(
+        default_factory=list, description="Relevant quotes from the user"
+    )
+    structured_data: dict = Field(
+        default_factory=dict,
+        description="Structured information extracted (e.g., goals, preferences)",
+    )
+    first_addressed_at: Optional[datetime] = Field(
+        default=None, description="When this was first discussed"
+    )
+
+
+class JourneyOptionSummary(BaseModel):
+    """Summary of selected treatment option for PDF generation."""
+
+    title: str = Field(description="Option title")
+    description: str = Field(description="Option description")
+    benefits: list[str] = Field(
+        default_factory=list, description="Benefits of this option"
+    )
+    drawbacks: list[str] = Field(
+        default_factory=list, description="Drawbacks of this option"
+    )
+    typical_timeline: Optional[str] = Field(
+        default=None, description="Expected timeline for this option"
+    )
+
+
+class ConversationSummaryData(BaseModel):
+    """Complete summary data for PDF generation."""
+
+    user_name: str = Field(description="User's full name")
+    preferred_name: Optional[str] = Field(
+        default=None, description="User's preferred name"
+    )
+    journey_title: str = Field(description="Journey title")
+    journey_description: str = Field(description="Journey description")
+    onboarding_responses: dict = Field(
+        default_factory=dict, description="User's onboarding responses"
+    )
+    point_summaries: list[PointSummary] = Field(
+        default_factory=list, description="Summaries for each conversation point"
+    )
+    selected_option: Optional[JourneyOptionSummary] = Field(
+        default=None, description="Selected treatment option if any"
+    )
+    narrative_summary: str = Field(
+        default="", description="LLM-generated narrative summary"
+    )
+    generated_at: datetime = Field(
+        default_factory=_utc_now, description="When the summary was generated"
+    )
+    conversation_id: str = Field(description="Conversation ID")

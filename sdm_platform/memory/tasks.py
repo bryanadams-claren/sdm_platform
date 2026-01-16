@@ -118,6 +118,8 @@ DESCRIPTION:
 KEYWORDS TO LOOK FOR:
 {keywords}
 
+{previous_assessment}
+
 RECENT CONVERSATION:
 {messages}
 
@@ -127,6 +129,15 @@ Your task:
 2. Extract key points, quotes, and structured information related to the human's
    understanding of the topic
 3. Assign a confidence score (0-1) for how thoroughly the topic was addressed
+
+IMPORTANT INSTRUCTIONS:
+- If you see a PREVIOUS ASSESSMENT above, consider it carefully
+- If the recent messages don't mention this topic, MAINTAIN the previous confidence
+- Only INCREASE confidence if you find new relevant information
+- Only DECREASE confidence if you find contradictory information that suggests the
+  previous assessment was wrong
+- If the topic was previously addressed but isn't mentioned in recent messages,
+  that's fine - keep the previous status
 
 Return a JSON object with this structure:
 {{
@@ -150,7 +161,7 @@ Return ONLY valid JSON, no other text."""
 
 
 @shared_task()
-def extract_conversation_point_memories(  # noqa: C901
+def extract_conversation_point_memories(  # noqa: C901, PLR0912, PLR0915
     user_id: str,
     journey_slug: str,
     messages_json: list[dict],
@@ -202,6 +213,17 @@ def extract_conversation_point_memories(  # noqa: C901
                     point_slug=point.slug,
                 )
 
+                if existing_memory:
+                    logger.info(
+                        "Found existing memory for %s: is_addressed=%s, "
+                        "confidence=%.2f",
+                        point.slug,
+                        existing_memory.is_addressed,
+                        existing_memory.confidence_score,
+                    )
+                else:
+                    logger.info("No existing memory found for %s", point.slug)
+
                 # Skip if already addressed with high confidence
                 if (
                     existing_memory
@@ -214,8 +236,26 @@ def extract_conversation_point_memories(  # noqa: C901
                     )
                     continue
 
-                # Prepare extraction prompt
+                # Prepare extraction prompt with previous assessment context
                 keywords_str = ", ".join(point.semantic_keywords or [])
+
+                # Build previous assessment context if it exists
+                previous_assessment = ""
+                if existing_memory:
+                    max_quotes = 2
+                    prev_quotes = (
+                        existing_memory.relevant_quotes[:max_quotes]
+                        if len(existing_memory.relevant_quotes) > max_quotes
+                        else existing_memory.relevant_quotes
+                    )
+                    previous_assessment = f"""
+PREVIOUS ASSESSMENT:
+- Status: {"Addressed" if existing_memory.is_addressed else "Not yet addressed"}
+- Confidence: {existing_memory.confidence_score:.2f}
+- Previously extracted points: {existing_memory.extracted_points}
+- Previous quotes: {prev_quotes}
+- Last analyzed: {existing_memory.last_analyzed_at}
+"""
 
                 extraction_messages = [
                     SystemMessage(
@@ -223,6 +263,7 @@ def extract_conversation_point_memories(  # noqa: C901
                             topic_title=point.title,
                             topic_description=point.description,
                             keywords=keywords_str,
+                            previous_assessment=previous_assessment,
                             messages=messages_text,
                         )
                     ),
@@ -253,13 +294,64 @@ def extract_conversation_point_memories(  # noqa: C901
                     )
                     continue
 
+                # Smart merge: combine new extraction with existing memory
+                new_confidence = float(extracted.get("confidence_score", 0.0))
+                new_is_addressed = extracted.get("is_addressed", False)
+                new_points = extracted.get("extracted_points", [])
+                new_quotes = extracted.get("relevant_quotes", [])
+                new_structured = extracted.get("structured_data", {})
+
+                # If we have existing memory, merge intelligently
+                if existing_memory:
+                    # Never decrease confidence - only increase or maintain
+                    merged_confidence = max(
+                        existing_memory.confidence_score, new_confidence
+                    )
+
+                    logger.info(
+                        "Merging %s: existing_conf=%.2f, new_conf=%.2f, "
+                        "merged_conf=%.2f",
+                        point.slug,
+                        existing_memory.confidence_score,
+                        new_confidence,
+                        merged_confidence,
+                    )
+
+                    # If previously addressed, stay addressed (don't regress)
+                    merged_is_addressed = (
+                        existing_memory.is_addressed or new_is_addressed
+                    )
+
+                    # Merge extracted points (combine unique points)
+                    existing_points_set = set(existing_memory.extracted_points)
+                    new_points_set = set(new_points)
+                    merged_points = list(existing_points_set | new_points_set)
+
+                    # Merge quotes (keep unique, limit to 10 most recent)
+                    existing_quotes_set = set(existing_memory.relevant_quotes)
+                    new_quotes_set = set(new_quotes)
+                    merged_quotes = list(existing_quotes_set | new_quotes_set)[-10:]
+
+                    # Merge structured data (new values override old)
+                    merged_structured = {
+                        **existing_memory.structured_data,
+                        **new_structured,
+                    }
+                else:
+                    # No existing memory, use new values
+                    merged_confidence = new_confidence
+                    merged_is_addressed = new_is_addressed
+                    merged_points = new_points
+                    merged_quotes = new_quotes
+                    merged_structured = new_structured
+
                 # Update semantic memory in LangGraph store (SINGLE SOURCE OF TRUTH)
                 updates = {
-                    "is_addressed": extracted.get("is_addressed", False),
-                    "confidence_score": float(extracted.get("confidence_score", 0.0)),
-                    "extracted_points": extracted.get("extracted_points", []),
-                    "relevant_quotes": extracted.get("relevant_quotes", []),
-                    "structured_data": extracted.get("structured_data", {}),
+                    "is_addressed": merged_is_addressed,
+                    "confidence_score": merged_confidence,
+                    "extracted_points": merged_points,
+                    "relevant_quotes": merged_quotes,
+                    "structured_data": merged_structured,
                     "message_count_analyzed": len(messages_json),
                 }
 
@@ -306,6 +398,9 @@ def extract_conversation_point_memories(  # noqa: C901
             user_id,
             journey_slug,
         )
+    else:
+        # Check if all points are addressed and trigger PDF generation if so
+        check_and_trigger_summary_generation(user_id, journey_slug)
 
 
 @shared_task()
@@ -335,4 +430,136 @@ def extract_all_memories(
             user_id,
             journey_slug,
             messages_json,
+        )
+
+
+@shared_task(bind=True, soft_time_limit=300, time_limit=600, max_retries=2)
+def generate_conversation_summary_pdf(self, conversation_id: str) -> str:
+    """
+    Generate PDF summary for a completed conversation.
+
+    Called automatically when all conversation points are addressed.
+
+    Args:
+        conversation_id: Conversation conv_id
+
+    Returns:
+        ConversationSummary ID as string
+    """
+    from django.core.files.base import ContentFile  # noqa: PLC0415
+
+    from sdm_platform.llmchat.models import Conversation  # noqa: PLC0415
+    from sdm_platform.memory.models import ConversationSummary  # noqa: PLC0415
+    from sdm_platform.memory.services.narrative import (  # noqa: PLC0415
+        generate_narrative_summary,
+    )
+    from sdm_platform.memory.services.pdf_generator import (  # noqa: PLC0415
+        ConversationSummaryPDFGenerator,
+    )
+    from sdm_platform.memory.services.summary import (  # noqa: PLC0415
+        ConversationSummaryService,
+    )
+
+    try:
+        conversation = Conversation.objects.get(conv_id=conversation_id)
+
+        # Check if summary already exists
+        if hasattr(conversation, "summary"):
+            logger.info(
+                "Summary already exists for conversation %s",
+                conversation_id,
+            )
+            return str(conversation.summary.id)
+
+        # Gather data
+        service = ConversationSummaryService(conversation)
+        summary_data = service.get_summary_data()
+
+        # Generate narrative via LLM
+        narrative = generate_narrative_summary(summary_data)
+        summary_data.narrative_summary = narrative
+
+        # Generate PDF
+        generator = ConversationSummaryPDFGenerator(summary_data)
+        pdf_buffer = generator.generate()
+
+        # Save to model
+        summary = ConversationSummary(
+            conversation=conversation,
+            narrative_summary=narrative,
+        )
+        filename = (
+            f"summary_{conversation_id}_{datetime.now(UTC).strftime('%Y%m%d')}.pdf"
+        )
+        summary.file.save(filename, ContentFile(pdf_buffer.getvalue()))
+        summary.save()
+
+        logger.info("Generated summary PDF for conversation %s", conversation_id)
+        return str(summary.id)
+
+    except Exception as exc:
+        logger.exception(
+            "Error generating PDF for conversation %s",
+            conversation_id,
+        )
+        raise self.retry(exc=exc) from exc
+
+
+def check_and_trigger_summary_generation(
+    user_id: str,
+    journey_slug: str,
+):
+    """
+    Check if all points are addressed and trigger PDF generation if so.
+
+    Called at the end of extract_conversation_point_memories.
+
+    Args:
+        user_id: User identifier (email)
+        journey_slug: Journey slug
+    """
+    from sdm_platform.journeys.models import Journey  # noqa: PLC0415
+    from sdm_platform.journeys.models import JourneyResponse  # noqa: PLC0415
+    from sdm_platform.memory.services.summary import (  # noqa: PLC0415
+        ConversationSummaryService,
+    )
+    from sdm_platform.users.models import User  # noqa: PLC0415
+
+    try:
+        # Find the conversation via JourneyResponse
+        user = User.objects.get(email=user_id)
+        journey = Journey.objects.get(slug=journey_slug)
+        journey_response = JourneyResponse.objects.get(user=user, journey=journey)
+        conversation = journey_response.conversation
+
+        if not conversation:
+            logger.warning(
+                "No conversation found for user %s, journey %s",
+                user_id,
+                journey_slug,
+            )
+            return
+
+        # Skip if summary already exists
+        if hasattr(conversation, "summary"):
+            return
+
+        service = ConversationSummaryService(conversation)
+        if service.is_complete():
+            logger.info(
+                "All points addressed for %s, triggering PDF generation",
+                conversation.conv_id,
+            )
+            generate_conversation_summary_pdf.delay(conversation.conv_id)
+    except (User.DoesNotExist, Journey.DoesNotExist, JourneyResponse.DoesNotExist):
+        logger.warning(
+            "Could not find user/journey/response for %s/%s when checking summary",
+            user_id,
+            journey_slug,
+        )
+    except Exception:
+        logger.exception(
+            "Error checking summary generation for user %s, journey %s",
+            user_id,
+            journey_slug,
         )

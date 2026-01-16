@@ -36,10 +36,10 @@ def create_extract_memories_node():
             logger.warning("extract_memories: no user_id in config, skipping")
             return state
 
-        # Format recent messages for extraction (last 10)
+        # Format recent messages for extraction (last 50)
         recent_messages = [
             {"role": m.type, "content": m.content}
-            for m in state["messages"][-10:]
+            for m in state["messages"][-50:]
             if hasattr(m, "type") and hasattr(m, "content")
         ]
 

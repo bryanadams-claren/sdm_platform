@@ -3,6 +3,7 @@
 from django.contrib import admin
 
 from sdm_platform.memory.models import ConversationPoint
+from sdm_platform.memory.models import ConversationSummary
 
 
 @admin.register(ConversationPoint)
@@ -37,3 +38,27 @@ class ConversationPointAdmin(admin.ModelAdmin):
         ),
         ("Display", {"fields": ("sort_order", "is_active")}),
     )
+
+
+@admin.register(ConversationSummary)
+class ConversationSummaryAdmin(admin.ModelAdmin):
+    """Admin for generated conversation summaries."""
+
+    list_display = (
+        "id",
+        "conversation",
+        "generated_at",
+    )
+    list_filter = ("generated_at",)
+    search_fields = ("conversation__conv_id", "conversation__user__email")
+    readonly_fields = ("id", "conversation", "generated_at", "narrative_summary")
+    ordering = ("-generated_at",)
+
+    fieldsets = (
+        (None, {"fields": ("id", "conversation", "generated_at")}),
+        ("Content", {"fields": ("narrative_summary", "file")}),
+    )
+
+    def has_add_permission(self, request):
+        """Summaries are auto-generated, not manually created."""
+        return False

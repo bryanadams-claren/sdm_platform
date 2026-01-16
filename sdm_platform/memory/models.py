@@ -72,3 +72,25 @@ class ConversationPoint(models.Model):
 
     def __str__(self):
         return f"{self.journey.slug}: {self.title}"
+
+
+class ConversationSummary(models.Model):
+    """Stores generated PDF summaries for completed conversations."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversation = models.OneToOneField(
+        "llmchat.Conversation",
+        on_delete=models.CASCADE,
+        related_name="summary",
+    )
+    file = models.FileField(upload_to="summaries/%Y/%m/")
+    narrative_summary = models.TextField(
+        help_text="LLM-generated narrative summary text"
+    )
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Conversation summaries"
+
+    def __str__(self):
+        return f"Summary for {self.conversation.conv_id}"

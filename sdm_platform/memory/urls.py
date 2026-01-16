@@ -16,4 +16,14 @@ urlpatterns = [
         views.initiate_conversation_point,
         name="initiate_conversation_point",
     ),
+    path(
+        "conversation/<str:conv_id>/summary/status/",
+        views.conversation_summary_status,
+        name="summary_status",
+    ),
+    path(
+        "conversation/<str:conv_id>/summary/download/",
+        views.download_conversation_summary,
+        name="download_summary",
+    ),
 ]

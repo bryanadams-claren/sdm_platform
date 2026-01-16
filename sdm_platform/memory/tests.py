@@ -9,6 +9,7 @@
 from datetime import UTC
 from datetime import date
 from datetime import datetime
+from io import BytesIO
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -1456,3 +1457,792 @@ class ConversationPointExtractionTaskTest(TestCase):
             call_args = mock_store.put.call_args
             saved_data = call_args[0][2]
             assert saved_data["message_count_analyzed"] == 5
+
+
+# ====== CONVERSATION SUMMARY PDF TESTS ======
+
+
+class ConversationSummarySchemaTest(TestCase):
+    """Test ConversationSummary Pydantic schemas."""
+
+    def test_point_summary_schema(self):
+        """Test PointSummary schema creation."""
+        from sdm_platform.memory.schemas import PointSummary
+
+        point = PointSummary(
+            title="Treatment Goals",
+            description="Discuss patient's treatment goals",
+            extracted_points=["Return to gardening", "Walk without pain"],
+            relevant_quotes=["I miss gardening"],
+            structured_data={"activities": ["gardening", "walking"]},
+            first_addressed_at=datetime.now(UTC),
+        )
+
+        assert point.title == "Treatment Goals"
+        assert len(point.extracted_points) == 2
+        assert len(point.relevant_quotes) == 1
+        assert "activities" in point.structured_data
+
+    def test_journey_option_summary_schema(self):
+        """Test JourneyOptionSummary schema creation."""
+        from sdm_platform.memory.schemas import JourneyOptionSummary
+
+        option = JourneyOptionSummary(
+            title="Physical Therapy",
+            description="Non-invasive treatment approach",
+            benefits=["Low risk", "Builds strength"],
+            drawbacks=["Takes time", "Requires commitment"],
+            typical_timeline="6-12 weeks",
+        )
+
+        assert option.title == "Physical Therapy"
+        assert len(option.benefits) == 2
+        assert len(option.drawbacks) == 2
+        assert option.typical_timeline == "6-12 weeks"
+
+    def test_conversation_summary_data_schema(self):
+        """Test ConversationSummaryData schema creation."""
+        from sdm_platform.memory.schemas import ConversationSummaryData
+        from sdm_platform.memory.schemas import PointSummary
+
+        point = PointSummary(
+            title="Treatment Goals",
+            description="Goals discussion",
+            extracted_points=["Goal 1"],
+            relevant_quotes=["Quote 1"],
+            structured_data={},
+            first_addressed_at=None,
+        )
+
+        summary_data = ConversationSummaryData(
+            user_name="Jane Doe",
+            preferred_name="Jane",
+            journey_title="Back Pain Decision Support",
+            journey_description="Journey description",
+            onboarding_responses={"question1": "answer1"},
+            point_summaries=[point],
+            selected_option=None,
+            narrative_summary="This is the narrative summary text.",
+            generated_at=datetime.now(UTC),
+            conversation_id="conv-123",
+        )
+
+        assert summary_data.user_name == "Jane Doe"
+        assert summary_data.preferred_name == "Jane"
+        assert len(summary_data.point_summaries) == 1
+        assert summary_data.narrative_summary == "This is the narrative summary text."
+
+
+class ConversationSummaryServiceTest(TestCase):
+    """Test ConversationSummaryService."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from sdm_platform.journeys.models import Journey
+        from sdm_platform.llmchat.models import Conversation
+        from sdm_platform.memory.models import ConversationPoint
+
+        self.user = User.objects.create_user(
+            email="test@example.com",
+            password="testpass123",
+        )
+
+        self.journey, _ = Journey.objects.get_or_create(
+            slug="backpain-summary-test",
+            defaults={
+                "title": "Back Pain Decision Support",
+                "description": "Test journey",
+            },
+        )
+
+        self.conversation = Conversation.objects.create(
+            user=self.user,
+            journey=self.journey,
+            conv_id="test-summary-conv",
+        )
+
+        # Create conversation points
+        self.point1 = ConversationPoint.objects.create(
+            journey=self.journey,
+            slug="treatment-goals",
+            title="Treatment Goals",
+            description="Discuss goals",
+            system_message_template="Let's discuss your goals",
+            semantic_keywords=["goals", "objectives"],
+        )
+
+        self.point2 = ConversationPoint.objects.create(
+            journey=self.journey,
+            slug="preferences",
+            title="Treatment Preferences",
+            description="Discuss preferences",
+            system_message_template="Let's discuss your preferences",
+            semantic_keywords=["prefer", "like"],
+        )
+
+    def test_is_complete_returns_false_when_no_memories(self):
+        """Test is_complete returns False when no conversation point memories exist."""
+        from sdm_platform.memory.services.summary import ConversationSummaryService
+
+        with patch("sdm_platform.memory.managers.get_memory_store") as mock_store_ctx:
+            mock_store = MagicMock()
+            mock_store.search.return_value = []  # No memories
+            mock_store.__enter__ = MagicMock(return_value=mock_store)
+            mock_store.__exit__ = MagicMock(return_value=False)
+            mock_store_ctx.return_value = mock_store
+
+            service = ConversationSummaryService(self.conversation)
+            assert service.is_complete() is False
+
+    def test_is_complete_returns_false_when_some_points_not_addressed(self):
+        """Test is_complete returns False when some points are not addressed."""
+        from sdm_platform.memory.services.summary import ConversationSummaryService
+
+        # Mock one addressed, one not addressed
+        mock_item1 = MagicMock()
+        mock_item1.key = "point_treatment-goals"
+        mock_item1.value = {
+            "conversation_point_slug": "treatment-goals",
+            "journey_slug": "backpain",
+            "is_addressed": True,
+            "confidence_score": 0.9,
+            "extracted_points": [],
+            "relevant_quotes": [],
+            "structured_data": {},
+            "first_addressed_at": datetime.now(UTC).isoformat(),
+            "last_analyzed_at": datetime.now(UTC).isoformat(),
+            "message_count_analyzed": 5,
+        }
+
+        mock_item2 = MagicMock()
+        mock_item2.key = "point_preferences"
+        mock_item2.value = {
+            "conversation_point_slug": "preferences",
+            "journey_slug": "backpain",
+            "is_addressed": False,
+            "confidence_score": 0.2,
+            "extracted_points": [],
+            "relevant_quotes": [],
+            "structured_data": {},
+            "first_addressed_at": None,
+            "last_analyzed_at": datetime.now(UTC).isoformat(),
+            "message_count_analyzed": 3,
+        }
+
+        with patch("sdm_platform.memory.managers.get_memory_store") as mock_store_ctx:
+            mock_store = MagicMock()
+            mock_store.search.return_value = [mock_item1, mock_item2]
+            mock_store.__enter__ = MagicMock(return_value=mock_store)
+            mock_store.__exit__ = MagicMock(return_value=False)
+            mock_store_ctx.return_value = mock_store
+
+            service = ConversationSummaryService(self.conversation)
+            assert service.is_complete() is False
+
+    def test_is_complete_returns_true_when_all_points_addressed(self):
+        """Test is_complete returns True when all conversation points are addressed."""
+        from sdm_platform.memory.services.summary import ConversationSummaryService
+
+        # Mock both points addressed
+        mock_item1 = MagicMock()
+        mock_item1.key = "point_treatment-goals"
+        mock_item1.value = {
+            "conversation_point_slug": "treatment-goals",
+            "journey_slug": "backpain",
+            "is_addressed": True,
+            "confidence_score": 0.9,
+            "extracted_points": [],
+            "relevant_quotes": [],
+            "structured_data": {},
+            "first_addressed_at": datetime.now(UTC).isoformat(),
+            "last_analyzed_at": datetime.now(UTC).isoformat(),
+            "message_count_analyzed": 5,
+        }
+
+        mock_item2 = MagicMock()
+        mock_item2.key = "point_preferences"
+        mock_item2.value = {
+            "conversation_point_slug": "preferences",
+            "journey_slug": "backpain",
+            "is_addressed": True,
+            "confidence_score": 0.85,
+            "extracted_points": [],
+            "relevant_quotes": [],
+            "structured_data": {},
+            "first_addressed_at": datetime.now(UTC).isoformat(),
+            "last_analyzed_at": datetime.now(UTC).isoformat(),
+            "message_count_analyzed": 3,
+        }
+
+        with patch("sdm_platform.memory.managers.get_memory_store") as mock_store_ctx:
+            mock_store = MagicMock()
+            mock_store.search.return_value = [mock_item1, mock_item2]
+            mock_store.__enter__ = MagicMock(return_value=mock_store)
+            mock_store.__exit__ = MagicMock(return_value=False)
+            mock_store_ctx.return_value = mock_store
+
+            service = ConversationSummaryService(self.conversation)
+            assert service.is_complete() is True
+
+    def test_get_summary_data_aggregates_all_fields(self):
+        """Test get_summary_data aggregates all required data."""
+        from sdm_platform.journeys.models import JourneyOption
+        from sdm_platform.journeys.models import JourneyResponse
+        from sdm_platform.memory.services.summary import ConversationSummaryService
+
+        # Create journey option and response
+        option = JourneyOption.objects.create(
+            journey=self.journey,
+            slug="physical-therapy",
+            title="Physical Therapy",
+            description="Non-invasive treatment",
+            benefits=["Low risk", "Builds strength"],
+            drawbacks=["Takes time"],
+            typical_timeline="6-12 weeks",
+        )
+
+        JourneyResponse.objects.create(
+            user=self.user,
+            journey=self.journey,
+            responses={"question1": "answer1"},
+            selected_option=option,
+        )
+
+        # Mock conversation point memories (for both points created in setUp)
+        mock_item1 = MagicMock()
+        mock_item1.key = "point_treatment-goals"
+        mock_item1.value = {
+            "conversation_point_slug": "treatment-goals",
+            "journey_slug": "backpain-summary-test",
+            "is_addressed": True,
+            "confidence_score": 0.9,
+            "extracted_points": ["Return to gardening"],
+            "relevant_quotes": ["I miss gardening"],
+            "structured_data": {"activities": ["gardening"]},
+            "first_addressed_at": datetime.now(UTC).isoformat(),
+            "last_analyzed_at": datetime.now(UTC).isoformat(),
+            "message_count_analyzed": 5,
+        }
+
+        mock_item2 = MagicMock()
+        mock_item2.key = "point_preferences"
+        mock_item2.value = {
+            "conversation_point_slug": "preferences",
+            "journey_slug": "backpain-summary-test",
+            "is_addressed": True,
+            "confidence_score": 0.85,
+            "extracted_points": ["Prefers non-invasive"],
+            "relevant_quotes": [],
+            "structured_data": {},
+            "first_addressed_at": datetime.now(UTC).isoformat(),
+            "last_analyzed_at": datetime.now(UTC).isoformat(),
+            "message_count_analyzed": 3,
+        }
+
+        # Mock user profile
+        mock_profile = UserProfileMemory(
+            name="Jane Doe",
+            preferred_name="Jane",
+            birthday=date(1985, 3, 15),
+        )
+
+        with patch("sdm_platform.memory.managers.get_memory_store") as mock_store_ctx:
+            mock_store = MagicMock()
+            mock_store.search.return_value = [mock_item1, mock_item2]
+            mock_store.__enter__ = MagicMock(return_value=mock_store)
+            mock_store.__exit__ = MagicMock(return_value=False)
+            mock_store_ctx.return_value = mock_store
+
+            with patch(
+                "sdm_platform.memory.services.summary.UserProfileManager.get_profile"
+            ) as mock_get_profile:
+                mock_get_profile.return_value = mock_profile
+
+                service = ConversationSummaryService(self.conversation)
+                summary_data = service.get_summary_data()
+
+                assert summary_data.user_name == "Jane Doe"
+                assert summary_data.preferred_name == "Jane"
+                assert summary_data.journey_title == "Back Pain Decision Support"
+                assert summary_data.onboarding_responses == {"question1": "answer1"}
+                assert len(summary_data.point_summaries) == 2
+                assert summary_data.selected_option is not None
+                assert summary_data.selected_option.title == "Physical Therapy"
+
+
+class PDFGeneratorTest(TestCase):
+    """Test PDF generation functionality."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from sdm_platform.memory.schemas import ConversationSummaryData
+        from sdm_platform.memory.schemas import PointSummary
+
+        self.point1 = PointSummary(
+            title="Treatment Goals",
+            description="Discuss treatment goals",
+            extracted_points=["Return to gardening", "Walk without pain"],
+            relevant_quotes=["I really miss being able to garden"],
+            structured_data={"activities": ["gardening", "walking"]},
+            first_addressed_at=datetime.now(UTC),
+        )
+
+        self.summary_data = ConversationSummaryData(
+            user_name="Jane Doe",
+            preferred_name="Jane",
+            journey_title="Back Pain Decision Support",
+            journey_description="Test journey description",
+            onboarding_responses={"question1": "answer1"},
+            point_summaries=[self.point1],
+            selected_option=None,
+            narrative_summary=(
+                "This is a test narrative summary. Jane discussed her treatment "
+                "goals and expressed her desire to return to gardening and walking "
+                "without pain."
+            ),
+            generated_at=datetime.now(UTC),
+            conversation_id="conv-123",
+        )
+
+    def test_pdf_generator_produces_valid_pdf(self):
+        """Test that PDF generator produces valid PDF bytes."""
+        from sdm_platform.memory.services.pdf_generator import (
+            ConversationSummaryPDFGenerator,
+        )
+
+        generator = ConversationSummaryPDFGenerator(self.summary_data)
+        pdf_buffer = generator.generate()
+
+        assert pdf_buffer is not None
+        assert isinstance(pdf_buffer, BytesIO)
+
+        # PDF should start with %PDF magic bytes
+        pdf_bytes = pdf_buffer.getvalue()
+        assert pdf_bytes.startswith(b"%PDF")
+        assert len(pdf_bytes) > 0
+
+    def test_pdf_generator_with_minimal_data(self):
+        """Test PDF generation with minimal data (no quotes, no selected option)."""
+        from sdm_platform.memory.schemas import ConversationSummaryData
+        from sdm_platform.memory.schemas import PointSummary
+        from sdm_platform.memory.services.pdf_generator import (
+            ConversationSummaryPDFGenerator,
+        )
+
+        minimal_point = PointSummary(
+            title="Goals",
+            description="Goals",
+            extracted_points=[],
+            relevant_quotes=[],
+            structured_data={},
+            first_addressed_at=None,
+        )
+
+        minimal_data = ConversationSummaryData(
+            user_name="John Smith",
+            preferred_name=None,
+            journey_title="Test Journey",
+            journey_description="Description",
+            onboarding_responses={},
+            point_summaries=[minimal_point],
+            selected_option=None,
+            narrative_summary="Short summary.",
+            generated_at=datetime.now(UTC),
+            conversation_id="conv-456",
+        )
+
+        generator = ConversationSummaryPDFGenerator(minimal_data)
+        pdf_buffer = generator.generate()
+
+        assert pdf_buffer is not None
+        pdf_bytes = pdf_buffer.getvalue()
+        assert pdf_bytes.startswith(b"%PDF")
+
+    def test_pdf_generator_with_selected_option(self):
+        """Test PDF generation includes selected option."""
+        from sdm_platform.memory.schemas import JourneyOptionSummary
+        from sdm_platform.memory.services.pdf_generator import (
+            ConversationSummaryPDFGenerator,
+        )
+
+        self.summary_data.selected_option = JourneyOptionSummary(
+            title="Physical Therapy",
+            description="Non-invasive treatment",
+            benefits=["Low risk", "Builds strength"],
+            drawbacks=["Takes time"],
+            typical_timeline="6-12 weeks",
+        )
+
+        generator = ConversationSummaryPDFGenerator(self.summary_data)
+        pdf_buffer = generator.generate()
+
+        assert pdf_buffer is not None
+        pdf_bytes = pdf_buffer.getvalue()
+        assert pdf_bytes.startswith(b"%PDF")
+
+
+class ConversationSummaryViewsTest(TestCase):
+    """Test conversation summary API endpoints."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from sdm_platform.journeys.models import Journey
+        from sdm_platform.llmchat.models import Conversation
+
+        self.user = User.objects.create_user(
+            email="test@example.com",
+            password="testpass123",
+        )
+
+        self.other_user = User.objects.create_user(
+            email="other@example.com",
+            password="testpass123",
+        )
+
+        self.journey, _ = Journey.objects.get_or_create(
+            slug="backpain-views-test",
+            defaults={
+                "title": "Back Pain Decision Support",
+                "description": "Test journey",
+            },
+        )
+
+        self.conversation = Conversation.objects.create(
+            user=self.user,
+            journey=self.journey,
+            conv_id="test-views-conv",
+        )
+
+        self.client.force_login(self.user)
+
+    def test_summary_status_returns_false_when_no_summary(self):
+        """Test status endpoint returns ready: false when no summary exists."""
+        from django.urls import reverse
+
+        url = reverse(
+            "memory:summary_status",
+            args=[str(self.conversation.conv_id)],
+        )
+        response = self.client.get(url)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["ready"] is False
+
+    def test_summary_status_returns_true_when_summary_exists(self):
+        """Test status endpoint returns ready: true when summary exists."""
+        from django.core.files.base import ContentFile
+        from django.urls import reverse
+
+        from sdm_platform.memory.models import ConversationSummary
+
+        # Create a summary
+        summary = ConversationSummary.objects.create(
+            conversation=self.conversation,
+            narrative_summary="Test summary",
+        )
+        summary.file.save("test.pdf", ContentFile(b"%PDF-test"))
+
+        url = reverse(
+            "memory:summary_status",
+            args=[str(self.conversation.conv_id)],
+        )
+        response = self.client.get(url)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["ready"] is True
+        assert "download_url" in data
+        assert "generated_at" in data
+
+    def test_summary_status_requires_authentication(self):
+        """Test status endpoint requires user to be logged in."""
+        from django.urls import reverse
+
+        self.client.logout()
+
+        url = reverse(
+            "memory:summary_status",
+            args=[str(self.conversation.conv_id)],
+        )
+        response = self.client.get(url)
+
+        # Should redirect to login
+        assert response.status_code == 302
+
+    def test_summary_status_requires_ownership(self):
+        """Test user cannot check status of another user's conversation."""
+        from django.urls import reverse
+
+        # Login as other user
+        self.client.force_login(self.other_user)
+
+        url = reverse(
+            "memory:summary_status",
+            args=[str(self.conversation.conv_id)],
+        )
+        response = self.client.get(url)
+
+        # Should return 404 (conversation not found for this user)
+        assert response.status_code == 404
+
+    def test_download_summary_returns_pdf_file(self):
+        """Test download endpoint returns PDF file."""
+        from django.core.files.base import ContentFile
+        from django.urls import reverse
+
+        from sdm_platform.memory.models import ConversationSummary
+
+        # Create a summary
+        summary = ConversationSummary.objects.create(
+            conversation=self.conversation,
+            narrative_summary="Test summary",
+        )
+        summary.file.save("test.pdf", ContentFile(b"%PDF-test-content"))
+
+        url = reverse(
+            "memory:download_summary",
+            args=[str(self.conversation.conv_id)],
+        )
+        response = self.client.get(url)
+
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/pdf"
+        assert "attachment" in response["Content-Disposition"]
+
+    def test_download_summary_returns_404_when_no_summary(self):
+        """Test download endpoint returns 404 when no summary exists."""
+        from django.urls import reverse
+
+        url = reverse(
+            "memory:download_summary",
+            args=[str(self.conversation.conv_id)],
+        )
+        response = self.client.get(url)
+
+        assert response.status_code == 404
+        data = response.json()
+        assert data["success"] is False
+        assert "error" in data
+
+    def test_download_summary_requires_authentication(self):
+        """Test download endpoint requires authentication."""
+        from django.urls import reverse
+
+        self.client.logout()
+
+        url = reverse(
+            "memory:download_summary",
+            args=[str(self.conversation.conv_id)],
+        )
+        response = self.client.get(url)
+
+        # Should redirect to login
+        assert response.status_code == 302
+
+    def test_download_summary_requires_ownership(self):
+        """Test user cannot download another user's summary."""
+        from django.core.files.base import ContentFile
+        from django.urls import reverse
+
+        from sdm_platform.memory.models import ConversationSummary
+
+        # Create a summary
+        summary = ConversationSummary.objects.create(
+            conversation=self.conversation,
+            narrative_summary="Test summary",
+        )
+        summary.file.save("test.pdf", ContentFile(b"%PDF-test"))
+
+        # Login as other user
+        self.client.force_login(self.other_user)
+
+        url = reverse(
+            "memory:download_summary",
+            args=[str(self.conversation.conv_id)],
+        )
+        response = self.client.get(url)
+
+        # Should return 404 (conversation not found for this user)
+        assert response.status_code == 404
+
+
+class ConversationSummaryTaskTest(TestCase):
+    """Test conversation summary generation task."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from sdm_platform.journeys.models import Journey
+        from sdm_platform.journeys.models import JourneyResponse
+        from sdm_platform.llmchat.models import Conversation
+        from sdm_platform.memory.models import ConversationPoint
+
+        self.user = User.objects.create_user(
+            email="test@example.com",
+            password="testpass123",
+        )
+
+        self.journey, _ = Journey.objects.get_or_create(
+            slug="backpain-task-test",
+            defaults={
+                "title": "Back Pain Decision Support",
+                "description": "Test journey",
+            },
+        )
+
+        self.conversation = Conversation.objects.create(
+            user=self.user,
+            journey=self.journey,
+            conv_id="test-task-conv",
+        )
+
+        # Create JourneyResponse linking conversation
+        self.journey_response = JourneyResponse.objects.create(
+            user=self.user,
+            journey=self.journey,
+            conversation=self.conversation,
+            responses={},
+        )
+
+        self.point = ConversationPoint.objects.create(
+            journey=self.journey,
+            slug="treatment-goals",
+            title="Treatment Goals",
+            description="Discuss goals",
+            system_message_template="Let's discuss your goals",
+            semantic_keywords=["goals"],
+        )
+
+    @patch("sdm_platform.memory.services.narrative.generate_narrative_summary")
+    @patch("sdm_platform.memory.services.pdf_generator.ConversationSummaryPDFGenerator")
+    def test_task_creates_conversation_summary(self, mock_pdf_gen, mock_narrative_gen):
+        """Test that task creates ConversationSummary model."""
+        from sdm_platform.memory.models import ConversationSummary
+        from sdm_platform.memory.tasks import generate_conversation_summary_pdf
+
+        # Mock narrative generation
+        mock_narrative_gen.return_value = "Generated narrative summary text."
+
+        # Mock PDF generation
+        mock_generator = MagicMock()
+        mock_generator.generate.return_value = BytesIO(b"%PDF-mock-content")
+        mock_pdf_gen.return_value = mock_generator
+
+        # Mock summary service
+        with patch(
+            "sdm_platform.memory.services.summary.ConversationSummaryService"
+        ) as mock_service_class:
+            mock_service = MagicMock()
+            mock_service.get_summary_data.return_value = MagicMock(
+                narrative_summary="",
+                user_name="Jane Doe",
+            )
+            mock_service_class.return_value = mock_service
+
+            # Run task
+            result = generate_conversation_summary_pdf(str(self.conversation.conv_id))
+
+            # Verify ConversationSummary was created
+            assert ConversationSummary.objects.filter(
+                conversation=self.conversation
+            ).exists()
+
+            summary = ConversationSummary.objects.get(conversation=self.conversation)
+            assert summary.narrative_summary == "Generated narrative summary text."
+            assert summary.file is not None
+            assert result == str(summary.id)
+
+    @patch("sdm_platform.memory.services.narrative.generate_narrative_summary")
+    def test_task_is_idempotent(self, mock_narrative_gen):
+        """Test that task doesn't recreate existing summary."""
+        from sdm_platform.memory.models import ConversationSummary
+        from sdm_platform.memory.tasks import generate_conversation_summary_pdf
+
+        # Create existing summary
+        existing_summary = ConversationSummary.objects.create(
+            conversation=self.conversation,
+            narrative_summary="Existing summary",
+        )
+
+        # Run task
+        result = generate_conversation_summary_pdf(str(self.conversation.conv_id))
+
+        # Should return existing summary ID
+        assert result == str(existing_summary.id)
+
+        # Should NOT have called narrative generation
+        mock_narrative_gen.assert_not_called()
+
+        # Should only have one summary
+        assert (
+            ConversationSummary.objects.filter(conversation=self.conversation).count()
+            == 1
+        )
+
+    def test_check_and_trigger_when_not_complete(self):
+        """Test check_and_trigger doesn't trigger when not all points addressed."""
+        from sdm_platform.memory.tasks import check_and_trigger_summary_generation
+
+        with patch(
+            "sdm_platform.memory.services.summary.ConversationSummaryService"
+        ) as mock_service_class:
+            mock_service = MagicMock()
+            mock_service.is_complete.return_value = False
+            mock_service_class.return_value = mock_service
+
+            with patch(
+                "sdm_platform.memory.tasks.generate_conversation_summary_pdf.delay"
+            ) as mock_task:
+                check_and_trigger_summary_generation(
+                    user_id=self.user.email,
+                    journey_slug="backpain-task-test",
+                )
+
+                # Task should NOT be triggered
+                mock_task.assert_not_called()
+
+    def test_check_and_trigger_when_complete(self):
+        """Test check_and_trigger triggers task when all points addressed."""
+        from sdm_platform.memory.tasks import check_and_trigger_summary_generation
+
+        with patch(
+            "sdm_platform.memory.services.summary.ConversationSummaryService"
+        ) as mock_service_class:
+            mock_service = MagicMock()
+            mock_service.is_complete.return_value = True
+            mock_service_class.return_value = mock_service
+
+            with patch(
+                "sdm_platform.memory.tasks.generate_conversation_summary_pdf.delay"
+            ) as mock_task:
+                check_and_trigger_summary_generation(
+                    user_id=self.user.email,
+                    journey_slug="backpain-task-test",
+                )
+
+                # Task SHOULD be triggered
+                mock_task.assert_called_once_with(str(self.conversation.conv_id))
+
+    def test_check_and_trigger_skips_if_summary_exists(self):
+        """Test check_and_trigger skips if summary already exists."""
+        from sdm_platform.memory.models import ConversationSummary
+        from sdm_platform.memory.tasks import check_and_trigger_summary_generation
+
+        # Create existing summary
+        ConversationSummary.objects.create(
+            conversation=self.conversation,
+            narrative_summary="Existing",
+        )
+
+        with patch(
+            "sdm_platform.memory.tasks.generate_conversation_summary_pdf.delay"
+        ) as mock_task:
+            check_and_trigger_summary_generation(
+                user_id=self.user.email,
+                journey_slug="backpain-task-test",
+            )
+
+            # Task should NOT be triggered
+            mock_task.assert_not_called()

@@ -187,7 +187,6 @@ async function apiFetchChatHistory(convId) {
           timestamp: msg.timestamp,
           citations: msg.citations,
         });
-        console.log("role: " + msg.role);
       }
     })
     .catch((error) => {
@@ -288,6 +287,7 @@ async function setActiveChat(chatId) {
   if (window.ConversationPoints) {
     window.ConversationPoints.load(activeConvId);
     window.ConversationPoints.startRefresh(activeConvId);
+    window.ConversationPoints.startSummaryCheck(activeConvId);
   }
 }
 

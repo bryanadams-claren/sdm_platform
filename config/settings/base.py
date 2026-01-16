@@ -154,6 +154,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+# https://docs.djangoproject.com/en/dev/ref/settings/#password-reset-timeout
+# Password reset links valid for 1 day (in seconds)
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
 
 # MIDDLEWARE
 # ------------------------------------------------------------------------------

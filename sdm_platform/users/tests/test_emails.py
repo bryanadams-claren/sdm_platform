@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from django.contrib.auth.tokens import default_token_generator
+from allauth.account.forms import default_token_generator
 from django.core import mail
 from django.test import RequestFactory
 from django.test import TestCase

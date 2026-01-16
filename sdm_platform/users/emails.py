@@ -2,8 +2,8 @@
 
 import logging
 
+from allauth.account.forms import default_token_generator
 from django.conf import settings
-from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.urls import reverse

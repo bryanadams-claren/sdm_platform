@@ -9,10 +9,10 @@ def setup_checkpointer(apps, schema_editor):
     """Initialize the PostgresSaver checkpoints table."""
     import environ
     from langgraph.checkpoint.postgres import PostgresSaver
-    
+
     # Get the database URL directly and create the checkpointer
     env = environ.Env()
-    
+
     # PostgresSaver.from_conn_string returns a context manager
     # We need to use it with 'with' statement
     with PostgresSaver.from_conn_string(env.str("DATABASE_URL")) as checkpointer:  # pyright: ignore[reportArgumentType]
@@ -28,7 +28,7 @@ def teardown_checkpointer(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-       ("llmchat", "0001_initial"),
+       ("llmchat", "0002_add_user_foreign_key"),
     ]
 
     operations = [

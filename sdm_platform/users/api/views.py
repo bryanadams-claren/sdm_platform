@@ -17,8 +17,7 @@ class UserViewSet(RetrieveModelMixin, ListModelMixin, UpdateModelMixin, GenericV
     lookup_field = "pk"
 
     def get_queryset(self, *args, **kwargs):
-        assert isinstance(self.request.user.id, int)
-        return self.queryset.filter(id=self.request.user.id)
+        return self.queryset.filter(id=self.request.user.id)  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
 
     @action(detail=False)
     def me(self, request):

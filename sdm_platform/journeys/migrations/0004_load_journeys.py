@@ -18,8 +18,8 @@ def reverse_journeys(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('journeys', '0001_initial'),
-        ('memory', '0002_initial'),  # Need ConversationPoint table to exist
+        ('journeys', '0003_add_user_foreign_key'),
+        ('memory', '0002_setup_postgres_store'),  # Need ConversationPoint table to exist
     ]
 
     operations = [

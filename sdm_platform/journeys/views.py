@@ -214,7 +214,7 @@ def handle_onboarding_submission(request, journey):
         )
 
         # Step 3: Create conversation with context
-        conv_id = f"{journey.slug}-{user.id}"  # pyright: ignore[reportAttributeAccessIssue]
+        conv_id = f"{journey.slug}-{user.id!s}"
         thread_id = format_thread_id(user.email, conv_id)
 
         # Build system prompt with responses

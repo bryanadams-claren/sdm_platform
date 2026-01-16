@@ -55,7 +55,7 @@ class Document(models.Model):
 
     def delete(self, *args, **kwargs):  # pyright: ignore[reportIncompatibleMethodOverride]
         """Ensure deletion cascades to Chroma."""
-        client, _ = get_chroma_client()
+        client = get_chroma_client()
         collection_name = self.chroma_collection or f"doc_{self.id}"
 
         try:

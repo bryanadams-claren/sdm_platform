@@ -12,7 +12,7 @@ def setup_store(apps, schema_editor):
 
     env = environ.Env()
 
-    with PostgresStore.from_conn_string(env.str("DATABASE_URL")) as store:
+    with PostgresStore.from_conn_string(env.str("DATABASE_URL")) as store:  # pyright: ignore[reportArgumentType]
         store.setup()
 
 
@@ -26,7 +26,8 @@ def teardown_store(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [
         # Ensure checkpointer tables exist first
-        ("llmchat", "0100_langgraph_checkpointer"),
+        ("llmchat", "0003_langgraph_checkpointer"),
+        ("memory", "0001_initial"),
     ]
 
     operations = [

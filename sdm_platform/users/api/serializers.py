@@ -4,7 +4,7 @@ from sdm_platform.users.models import User
 
 
 class UserSerializer(serializers.ModelSerializer[User]):
-    class Meta:
+    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         model = User
         fields = ["name", "url"]
 

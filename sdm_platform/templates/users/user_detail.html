@@ -42,18 +42,24 @@
                 {% endfor %}
               {% endif %}
               <div class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-3">
                   <a class="btn btn-outline-primary w-100" href="{% url 'users:update' %}">
                     <i class="bi bi-pencil"></i> My Info
                   </a>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
+                  <a class="btn btn-outline-primary w-100"
+                     href="{% url 'account_change_password' %}">
+                    <i class="bi bi-key"></i> Password
+                  </a>
+                </div>
+                <div class="col-md-3">
                   <a class="btn btn-outline-primary w-100"
                      href="{% url 'account_email' %}">
                     <i class="bi bi-envelope"></i> Email Settings
                   </a>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                   <a class="btn btn-outline-primary w-100" href="{% url 'mfa_index' %}">
                     <i class="bi bi-shield-lock"></i> 2FA Security
                   </a>

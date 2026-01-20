@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import date
 
 from django.contrib.auth import login
 from django.db import transaction
@@ -133,7 +134,7 @@ def journey_subdomain_not_eligible(request):
 
 
 @require_http_methods(["POST"])
-def handle_onboarding_submission(request, journey):
+def handle_onboarding_submission(request, journey):  # noqa: C901
     """
     Process the onboarding form submission.
     1. Check for red flags (eligibility screening)
@@ -174,26 +175,42 @@ def handle_onboarding_submission(request, journey):
             # Auto-provision anonymous user
             name = data.get("name", "").strip()
             email = data.get("email", "").strip()
+            birthday = data.get("birthday", "").strip()
 
             if not name:
                 return JsonResponse({"error": "Name is required"}, status=400)
+
+            if not birthday:
+                return JsonResponse({"error": "Birthday is required"}, status=400)
 
             # Generate email if not provided (for truly anonymous)
             if not email:
                 email = f"user_{timezone.now().timestamp()}@anonymous.corient.com"
 
+            # Parse birthday
+            date_of_birth = None
+            if birthday:
+                try:
+                    date_of_birth = date.fromisoformat(birthday)
+                except ValueError:
+                    return JsonResponse(
+                        {"error": "Invalid birthday format"}, status=400
+                    )
+
             # Check if user exists
             user, created = User.objects.get_or_create(
-                email=email, defaults={"name": name}
+                email=email, defaults={"name": name, "date_of_birth": date_of_birth}
             )
 
             if created:
                 # Set unusable password - user will set via email link
                 user.set_unusable_password()
                 user.save()
-                # Update user profile with name
+                # Update user profile with name and birthday
                 UserProfileManager.update_profile(
-                    user_id=user.email, updates={"name": name}, source="user_input"
+                    user_id=user.email,
+                    updates={"name": name, "date_of_birth": birthday},
+                    source="user_input",
                 )
                 # Send welcome email with password setup link
                 send_welcome_email(user, request=request)

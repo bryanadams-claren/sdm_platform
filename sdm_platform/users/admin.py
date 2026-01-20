@@ -28,7 +28,7 @@ class UserAdmin(auth_admin.UserAdmin):
     add_form = UserAdminCreationForm
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        (_("Personal info"), {"fields": ("name",)}),
+        (_("Personal info"), {"fields": ("name", "date_of_birth")}),
         (
             _("Permissions"),
             {
@@ -51,8 +51,8 @@ class UserAdmin(auth_admin.UserAdmin):
         ),
     )
     readonly_fields = ["memory_data_display"]
-    list_display = ["email", "name", "is_superuser"]
-    search_fields = ["name"]
+    list_display = ["email", "name", "date_of_birth", "is_superuser"]
+    search_fields = ["name", "email"]
     ordering = ["id"]
     add_fieldsets = (
         (

@@ -5,6 +5,7 @@ from typing import ClassVar
 
 from django.contrib.auth.models import AbstractUser
 from django.db.models import CharField
+from django.db.models import DateField
 from django.db.models import EmailField
 from django.db.models import ImageField
 from django.db.models import UUIDField
@@ -30,6 +31,7 @@ class User(AbstractUser):
     email = EmailField(_("email address"), unique=True)
     username = None  # type: ignore[assignment]
     avatar = ImageField(_("Avatar"), upload_to="avatars/", blank=True, null=True)
+    date_of_birth = DateField(_("Date of Birth"), blank=True, null=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

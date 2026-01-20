@@ -9,6 +9,7 @@
 let currentConversationPoints = [];
 let pointsRefreshInterval = null;
 let summaryReady = false;
+let summaryDownloadUrl = null;
 
 /**
  * Fetch conversation points from the API
@@ -56,6 +57,16 @@ function renderConversationPoints(points, journeyTitle) {
         </div>
     `;
   chatList.appendChild(header);
+
+  // Re-add download button if summary is ready
+  if (summaryDownloadUrl) {
+    const btn = document.createElement("a");
+    btn.id = "downloadSummaryBtn";
+    btn.href = summaryDownloadUrl;
+    btn.className = "btn btn-success btn-sm mt-2 w-100";
+    btn.innerHTML = '<i class="bi bi-download me-1"></i> Download Summary PDF';
+    header.appendChild(btn);
+  }
 
   // If no points, show a message
   if (!points || points.length === 0) {
@@ -311,6 +322,7 @@ async function checkSummaryStatus(convId) {
 
     if (data.ready && !summaryReady) {
       summaryReady = true;
+      summaryDownloadUrl = data.download_url;
       showDownloadButton(data.download_url);
     }
   } catch (error) {

@@ -55,7 +55,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.thread_name,
                 {
                     "type": "chat.message",
-                    "message": json.dumps(message),
+                    "message": message,
                 },
             )
             username = get_useremail_from_scope(self.scope)

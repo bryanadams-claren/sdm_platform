@@ -344,4 +344,4 @@ Procfile
 .claude
 .claude/*
 nul
-.clinerules
+CLAUDE.md

@@ -3,6 +3,7 @@
 {% load static compress %}
 
 {% block body %}
+  {% csrf_token %}
   <div class="chat-layout">
     <!-- Sidebar -->
     <div class="sidebar">

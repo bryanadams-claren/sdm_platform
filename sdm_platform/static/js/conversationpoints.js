@@ -157,37 +157,9 @@ function createConversationPointElement(point) {
 }
 
 /**
- * Handle clicking on a conversation point
+ * Handle clicking on a conversation point - initiates AI discussion of the topic
  * @param {Object} point - The clicked conversation point
  */
-function handleConversationPointClick(point) {
-  console.log("Conversation point clicked:", point);
-
-  // You can implement various actions here:
-  // 1. Scroll to relevant messages in the chat
-  // 2. Show a modal with point details
-  // 3. Highlight the point's status
-  // 4. Send a message to focus on this topic
-
-  // For now, just show an alert with details
-  let message = `${point.title}\n\n`;
-
-  if (point.is_addressed) {
-    message += `✓ Addressed (${Math.round(point.confidence_score * 100)}% confidence)\n\n`;
-    if (point.extracted_points && point.extracted_points.length > 0) {
-      message +=
-        "Key Points:\n" +
-        point.extracted_points.map((p) => `• ${p}`).join("\n");
-    }
-  } else {
-    message += `Not yet discussed\n\n`;
-    if (point.description) {
-      message += point.description;
-    }
-  }
-
-  alert(message);
-}
 
 /**
  * Load and display conversation points for the active conversation
@@ -245,10 +217,6 @@ function stopPointsRefresh() {
   }
 }
 
-/**
- * Handle clicking on a conversation point
- * @param {Object} point - The clicked conversation point
- */
 function handleConversationPointClick(point) {
   console.log("Conversation point clicked:", point);
 
@@ -256,12 +224,18 @@ function handleConversationPointClick(point) {
   const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]")?.value;
   if (!csrfToken) {
     console.error("CSRF token not found");
+    alert(
+      "Unable to initiate conversation: page configuration error. Please refresh the page.",
+    );
     return;
   }
 
   // Get the active conversation ID from the global scope
   if (!window.activeConvId) {
     console.error("No active conversation ID");
+    alert(
+      "No active conversation. Please select or start a conversation first.",
+    );
     return;
   }
 

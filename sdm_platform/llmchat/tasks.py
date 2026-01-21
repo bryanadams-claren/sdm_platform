@@ -59,7 +59,9 @@ def _build_elicitation_context(conversation_point, point_memory) -> list[str]:
         sections.append(f"## Example Questions You Could Adapt\n{questions_text}")
 
     # Add existing memory context
-    if point_memory and (point_memory.extracted_points or point_memory.relevant_quotes):
+    has_extracted_points = point_memory and point_memory.extracted_points
+    has_relevant_quotes = point_memory and point_memory.relevant_quotes
+    if has_extracted_points or has_relevant_quotes:
         memory_parts = ["## What You Already Know About This Topic"]
 
         if point_memory.extracted_points:
@@ -85,10 +87,20 @@ def _build_elicitation_context(conversation_point, point_memory) -> list[str]:
     # Add instruction for the AI
     sections.append(
         "## Your Task\n"
-        "You are proactively starting a discussion about this topic. "
-        "Ask a thoughtful question that helps achieve your elicitation goals. "
-        "Be conversational and empathetic. Ask ONE clear question - "
-        "don't overwhelm with multiple questions at once."
+        "The patient has clicked on this conversation topic, indicating "
+        "they want to discuss it now. "
+        "This is an intentional topic change - the patient is asking "
+        "to explore this area.\n\n"
+        "Your response should:\n"
+        "1. If there was a previous conversation happening, briefly "
+        "acknowledge it (1 sentence max) before transitioning to this new topic\n"
+        "2. Make it clear you're shifting to discuss what the patient "
+        "clicked on\n"
+        "3. Ask ONE thoughtful question that helps achieve your "
+        "elicitation goals\n\n"
+        "Be conversational and empathetic. Don't overwhelm with multiple "
+        "questions at once. "
+        "Focus entirely on the conversation point goals above."
     )
 
     return sections
@@ -144,7 +156,8 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
                 config,
             )
 
-        conversation.updated_at = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
+        now = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
+        conversation.updated_at = now
         conversation.save()
 
         # Send reply if LLM responded (memory extraction is handled by graph node)
@@ -258,9 +271,32 @@ def send_ai_initiated_message(
             # Build messages for the LLM call
             prompt_messages = [SystemMessage(content="\n\n".join(system_context_parts))]
 
-            # Add recent conversation history for context (last 5 messages)
+            # Add recent conversation history for context (last 2-3 messages)
+            # Keep this minimal to avoid the AI feeling obligated to
+            # continue the previous topic
             if existing_messages:
-                prompt_messages.extend(existing_messages[-5:])
+                prompt_messages.extend(existing_messages[-3:])
+
+            # Add a final emphatic instruction AFTER the conversation history
+            # This leverages recency bias to ensure the AI focuses on the
+            # conversation point
+            goals_text = (
+                ", ".join(conversation_point.elicitation_goals[:2])
+                if conversation_point.elicitation_goals
+                else "this conversation point"
+            )
+            emphatic_instruction = SystemMessage(
+                content=(
+                    f"IMPORTANT: The patient has just clicked to discuss "
+                    f"'{conversation_point.title}'. "
+                    f"Your ONLY task right now is to ask a question about "
+                    f"this specific topic. "
+                    f"Do NOT continue discussing previous topics unless "
+                    f"absolutely necessary for a brief transition. "
+                    f"Focus your question on: {goals_text}."
+                )
+            )
+            prompt_messages.append(emphatic_instruction)
 
             # Generate the AI's response
             ai_response = model.invoke(prompt_messages)
@@ -284,7 +320,8 @@ def send_ai_initiated_message(
             )
 
         # Update conversation timestamp
-        conversation.updated_at = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
+        now = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
+        conversation.updated_at = now
         conversation.save()
 
         # Send the message through WebSocket
@@ -292,7 +329,7 @@ def send_ai_initiated_message(
             "bot",
             settings.AI_ASSISTANT_NAME,
             ai_response.content,  # pyright: ignore[reportArgumentType]
-            datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)),
+            now,
             [],  # No citations for initiated messages
         )
 

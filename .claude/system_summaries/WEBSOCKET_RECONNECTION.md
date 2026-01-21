@@ -16,9 +16,9 @@ WebSocketManager (base class)
 
 ### Files
 
-1. **`websocket-base.js`** - Base class with common reconnection logic
-2. **`chat-websocket.js`** - Chat-specific WebSocket manager
-3. **`status-websocket.js`** - Status-specific WebSocket manager
+1. **`sdm_platform/static/js/websocket-base.js`** - Base class with common reconnection logic
+2. **`sdm_platform/static/js/chat-websocket.js`** - Chat-specific WebSocket manager
+3. **`sdm_platform/static/js/status-websocket.js`** - Status-specific WebSocket manager
 
 ## Features
 
@@ -102,6 +102,15 @@ window.StatusWebSocket.onStatusChange((status) => {
         console.log('AI started thinking');
     } else if (status.type === 'thinking_end') {
         console.log('AI finished thinking');
+    } else if (status.type === 'extraction_start') {
+        console.log('Memory extraction started');
+    } else if (status.type === 'extraction_complete') {
+        console.log('Memory extraction completed');
+        if (status.summary_triggered) {
+            console.log('Summary generation triggered');
+        }
+    } else if (status.type === 'summary_complete') {
+        console.log('Summary PDF ready');
     }
 });
 ```
@@ -150,12 +159,18 @@ new ChatWebSocketManager({
 
 ```javascript
 new StatusWebSocketManager({
-    maxReconnectAttempts: 5,     // Max reconnection tries (default: 5)
-    reconnectDelay: 1000,         // Initial delay in ms (default: 1000)
-    pingInterval: 30000,          // Keepalive interval (default: 30000)
-    staleTimeoutDuration: 30000   // Clear stuck thinking state (default: 30000)
+    maxReconnectAttempts: 5,          // Max reconnection tries (default: 5)
+    reconnectDelay: 1000,              // Initial delay in ms (default: 1000)
+    pingInterval: 30000,               // Keepalive interval (default: 30000)
+    staleTimeoutDuration: 30000,       // Clear stuck thinking state (default: 30000)
+    extractionStaleTimeout: 60000      // Clear stuck extraction state (default: 60000)
 })
 ```
+
+**Additional State Tracking:**
+- `isThinking` - AI is currently generating a response
+- `isExtracting` - Memory extraction is in progress
+- `isSummaryGenerating` - PDF summary is being generated
 
 ## Testing Reconnection
 
@@ -248,6 +263,11 @@ window.ChatWebSocket.sendMessage('test')
 // Check listener count
 window.ChatWebSocket.listeners.length
 window.StatusWebSocket.statusListeners.length
+
+// Check status states
+window.StatusWebSocket.isThinking
+window.StatusWebSocket.isExtracting
+window.StatusWebSocket.isSummaryGenerating
 ```
 
 ## Error Handling

@@ -23,7 +23,8 @@ class ConversationPoint(models.Model):
     journey = ForeignKey(Journey)
     slug = SlugField()  # e.g., "clarify-values"
     title = CharField()  # e.g., "Clarify your values and preferences"
-    description = TextField()
+    description = TextField()  # Technical description
+    curiosity_prompt = TextField()  # First-person UI text (e.g., "I'd like to understand...")
 
     # Guidance for the AI
     system_message_template = TextField()  # High-level instruction
@@ -177,11 +178,20 @@ Key methods:
 
 ### Memory Extraction
 
-**Task**: `sdm_platform/memory/tasks.py` → `extract_conversation_point_memories()`
+**Task**: `sdm_platform/memory/tasks.py` → `extract_all_memories()`
 
 Called automatically by the conversation graph after each turn.
 
-**Process for Each Conversation Point**:
+**Process**:
+1. **Extract user profile** via `extract_user_profile_memory()`
+2. **Extract conversation points** via `extract_conversation_point_memories()`
+3. **Emit status events** for UI feedback:
+   - `send_extraction_start()` when extraction begins
+   - `send_extraction_complete()` when finished (includes `summary_triggered` flag)
+4. **Check for summary generation** - If all points addressed, triggers PDF generation
+5. **Pass thread_id** for real-time status updates to frontend
+
+**Process for Each Conversation Point** (`extract_conversation_point_memories()`):
 1. **Check if already addressed** with high confidence → skip if yes
 2. **Build extraction prompt** with:
    - Conversation point description
@@ -244,11 +254,17 @@ send_llm_reply → conversation graph
     ↓
 extract_memories node
     ↓
-extract_conversation_point_memories task
+extract_all_memories task (Celery, async)
     ↓
-For each conversation point:
-    ├─→ LLM analyzes if topic discussed
-    └─→ Updates ConversationPointMemory in store
+    ├─→ send_extraction_start (WebSocket status event)
+    ├─→ extract_user_profile_memory
+    ├─→ extract_conversation_point_memories
+    │   └─→ For each conversation point:
+    │       ├─→ LLM analyzes if topic discussed
+    │       └─→ Updates ConversationPointMemory in store
+    ├─→ check_and_trigger_summary_generation
+    │   └─→ If all points addressed → generate_conversation_summary_pdf task
+    └─→ send_extraction_complete (includes summary_triggered flag)
 ```
 
 ## Key Files
@@ -262,16 +278,24 @@ For each conversation point:
 
 ### Tasks
 - `sdm_platform/llmchat/tasks.py` - send_ai_initiated_message, send_llm_reply
-- `sdm_platform/memory/tasks.py` - extract_conversation_point_memories, extract_user_profile
+- `sdm_platform/memory/tasks.py` - extract_all_memories, extract_conversation_point_memories, extract_user_profile, check_and_trigger_summary_generation, generate_conversation_summary_pdf
 
-### Views
-- `sdm_platform/memory/views.py` - API endpoints for conversation points
+### Graph Nodes
+- `sdm_platform/llmchat/utils/graphs/nodes/memory.py` - extract_memories node (calls extract_all_memories with thread_id)
+
+### Views & APIs
+- `sdm_platform/memory/views.py` - API endpoints:
+  - `conversation_points_api()` - Get points with completion status (includes curiosity_prompt)
+  - `initiate_conversation_point()` - User clicks point to initiate discussion
+  - `conversation_summary_status()` - Check if PDF summary is ready
+  - `download_conversation_summary()` - Download PDF summary
 
 ### Fixtures
 - `sdm_platform/journeys/fixtures/journeys/backpain.json` - Conversation point definitions
 
-### Store
+### Store & Status
 - `sdm_platform/memory/store.py` - LangGraph store utilities (namespacing, connection)
+- `sdm_platform/llmchat/utils/status.py` - WebSocket status broadcasts (extraction_start, extraction_complete, summary_complete)
 
 ## How Existing Conversations Interact with Updated Conversation Points
 
@@ -364,6 +388,38 @@ with get_memory_store() as store:
     )
 ```
 
+## Type Hints for Reverse Relationships
+
+The `ConversationSummary` model has a OneToOne relationship with `Conversation`:
+
+```python
+# In ConversationSummary
+conversation = models.OneToOneField(
+    "llmchat.Conversation",
+    on_delete=models.CASCADE,
+    related_name="summary",
+)
+```
+
+To help IDEs and type checkers understand the reverse relationship (`conversation.summary`), the `Conversation` model includes a type hint:
+
+```python
+# In sdm_platform/llmchat/models.py
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sdm_platform.memory.models import ConversationSummary
+
+class Conversation(models.Model):
+    # ... fields ...
+
+    if TYPE_CHECKING:
+        # Reverse OneToOne relationship from ConversationSummary
+        summary: "ConversationSummary"
+```
+
+This prevents IDE warnings when accessing `conversation.summary` while avoiding circular import issues.
+
 ## Common Pitfalls
 
 1. **Forgetting to reload journeys** after editing JSON - Changes won't take effect until `load_journeys --force`
@@ -375,6 +431,8 @@ with get_memory_store() as store:
 4. **Assuming completion_criteria is enforced** - It's currently documentation only
 
 5. **Expecting instant extraction** - Extraction runs after AI response, not immediately
+
+6. **Missing thread_id** - Ensure thread_id is passed to extract_all_memories for status updates to work
 
 ## Summary
 

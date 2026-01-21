@@ -17,6 +17,9 @@ Successfully implemented a real-time AI status communication system that solves 
 #### Status Helper Functions (`sdm_platform/llmchat/utils/status.py`)
 - `send_thinking_start(thread_name, trigger)` - Notify start of AI processing
 - `send_thinking_end(thread_name)` - Notify end of AI processing
+- `send_extraction_start(thread_name)` - Notify start of memory extraction
+- `send_extraction_complete(thread_name, *, summary_triggered)` - Notify extraction complete, optionally indicate summary generation started
+- `send_summary_complete(thread_name)` - Notify PDF summary is ready for download
 - `send_thinking_progress()` - Phase 2 feature (progress updates)
 - `send_thinking_stream()` - Phase 2 feature (streaming thoughts)
 
@@ -27,27 +30,53 @@ Successfully implemented a real-time AI status communication system that solves 
 - `send_ai_initiated_message()` - Now emits thinking_start/end events
   - Triggers with "conversation_point" label
 
+#### Memory Tasks (`sdm_platform/memory/tasks.py`)
+- `extract_all_memories()` - Emits extraction_start/complete events
+  - Sends extraction_start when task begins
+  - Detects if summary generation was triggered
+  - Sends extraction_complete with summary_triggered flag
+  - Wrapped in try/finally to ensure extraction_complete always fires
+- `generate_conversation_summary_pdf()` - Emits summary_complete event
+  - Sends summary_complete when PDF is ready
+- `check_and_trigger_summary_generation()` - Returns boolean
+  - Returns True if summary generation was triggered
+  - Returns False if not all points are addressed
+
 #### Routing (`config/routing.py`)
 - Added WebSocket route: `ws/status/<conv_id>/`
 
 ### 2. Frontend Components
 
-#### AIStatusManager (`sdm_platform/static/js/status.js`)
+#### StatusWebSocketManager (`sdm_platform/static/js/status-websocket.js`)
+- Extends WebSocketManager base class
 - Manages status WebSocket connection lifecycle
 - Handles reconnection with exponential backoff
-- Implements 30-second stale timeout for stuck states
+- Implements 30-second stale timeout for stuck thinking states
+- Implements 60-second stale timeout for stuck extraction states
 - Provides event listener interface for status changes
 - Includes keepalive ping mechanism
+- Tracks extraction and summary generation states
+- Handles extraction_start, extraction_complete, summary_complete events
 
 #### Integration (`sdm_platform/static/js/chat.js`)
 - Connects to status WebSocket on conversation load
 - Listens for thinking_start/end events
 - Shows/hides typing indicator based on status
 - Disconnects when switching conversations
+- Subscribes/unsubscribes to status events when switching conversations
 - Removed manual typing indicator logic
 
+#### Conversation Points Integration (`sdm_platform/static/js/conversationpoints.js`)
+- Subscribes to status events when loading conversation points
+- Shows extraction indicator during memory extraction
+- Shows summary generation indicator when all points addressed
+- Refreshes conversation points when extraction completes
+- Refreshes download button when summary is ready
+- Custom messages: "Analyzing the conversation (you may continue the dialogue)..." and "Conversation complete! Generating your summary..."
+
 #### Template Updates (`sdm_platform/templates/llmchat/conversation.html`)
-- Added status.js script (loaded before chat.js)
+- Added status-websocket.js script (loaded before chat.js)
+- Added extraction indicator UI in conversation points sidebar
 
 ## Architecture
 
@@ -59,8 +88,11 @@ Chat WebSocket          Status WebSocket
      │                        │
      ├─ User messages         ├─ thinking_start
      ├─ AI responses          ├─ thinking_end
-     ├─ Chat history          ├─ thinking_progress (Phase 2)
-     └─ Citations             └─ thinking_stream (Phase 2)
+     ├─ Chat history          ├─ extraction_start
+     └─ Citations             ├─ extraction_complete
+                              ├─ summary_complete
+                              ├─ thinking_progress (Phase 2)
+                              └─ thinking_stream (Phase 2)
 ```
 
 ### Data Flow
@@ -90,6 +122,28 @@ Chat WebSocket          Status WebSocket
 Every message follows the same flow, with trigger="autonomous"
 ```
 
+**Memory Extraction:**
+```
+1. AI response sent → ChatConsumer
+2. Memory node in graph triggers extract_all_memories.delay()
+3. Task starts → send_extraction_start() → StatusConsumer → UI shows "Analyzing the conversation..."
+4. Conversation point memories extracted
+5. check_and_trigger_summary_generation() returns boolean
+6. Task completes → send_extraction_complete(summary_triggered=True/False)
+7. If summary_triggered=True → UI shows "Conversation complete! Generating your summary..."
+8. UI refreshes conversation points
+```
+
+**Summary Generation:**
+```
+1. extract_all_memories triggers generate_conversation_summary_pdf.delay()
+2. PDF generation task runs (summary indicator already showing)
+3. Task completes → send_summary_complete() → StatusConsumer
+4. UI hides summary indicator
+5. UI refreshes to show "Download Summary PDF" button
+6. "Guide Me" button is hidden when summary button appears
+```
+
 ## Key Features
 
 ### 1. Automatic Trigger Detection
@@ -98,9 +152,11 @@ Every message follows the same flow, with trigger="autonomous"
 - Conversation points: trigger="conversation_point"
 
 ### 2. Robust Error Handling
-- Finally blocks ensure thinking_end always fires
-- Stale timeout clears stuck indicators (30s)
+- Finally blocks ensure thinking_end and extraction_complete always fire
+- Stale timeout clears stuck thinking indicators (30s)
+- Stale timeout clears stuck extraction indicators (60s)
 - Automatic WebSocket reconnection (5 attempts, exponential backoff)
+- Keyword-only argument for `summary_triggered` prevents boolean confusion
 
 ### 3. Clean State Management
 - Independent status per conversation
@@ -117,30 +173,53 @@ Every message follows the same flow, with trigger="autonomous"
 ## Files Modified
 
 ### New Files
-- `sdm_platform/llmchat/utils/status.py`
-- `sdm_platform/static/js/status.js`
+- `sdm_platform/llmchat/utils/status.py` - Status broadcast functions
+- `sdm_platform/static/js/status-websocket.js` - Status WebSocket manager
+- `sdm_platform/static/js/websocket-base.js` - Base WebSocket class
+- `sdm_platform/static/js/chat-websocket.js` - Chat WebSocket manager
 - `.claude/AI_STATUS_SPEC.md`
 - `.claude/TEST_STATUS_SYSTEM.md`
 - `.claude/IMPLEMENTATION_SUMMARY.md`
 
 ### Modified Files
 - `sdm_platform/llmchat/consumers.py` - Added StatusConsumer
-- `sdm_platform/llmchat/tasks.py` - Added status emissions
+- `sdm_platform/llmchat/tasks.py` - Added thinking status emissions
+- `sdm_platform/memory/tasks.py` - Added extraction/summary status emissions
+- `sdm_platform/llmchat/utils/graphs/nodes/memory.py` - Pass thread_id to extraction task
+- `sdm_platform/llmchat/models.py` - Added type hints for reverse OneToOne relationship
 - `config/routing.py` - Added status WebSocket route
-- `sdm_platform/static/js/chat.js` - Integrated status system
-- `sdm_platform/static/js/conversationpoints.js` - Updated comments
-- `sdm_platform/templates/llmchat/conversation.html` - Added status.js
+- `sdm_platform/static/js/chat.js` - Integrated status system with subscriptions
+- `sdm_platform/static/js/conversationpoints.js` - Added extraction/summary indicators and status subscriptions
+- `sdm_platform/static/css/project.css` - Added styles for extraction indicator and action buttons
+- `sdm_platform/templates/llmchat/conversation.html` - Added status-websocket.js, extraction indicator UI
 
 ## Testing Checklist
 
+### Thinking Indicators
 - [ ] Assistant mode: @llm messages show typing indicator
 - [ ] Assistant mode: Regular messages don't show indicator
 - [ ] Autonomous mode: All messages show typing indicator
-- [ ] Conversation points: Clicking shows indicator
-- [ ] Error handling: Indicator clears on task failure
+- [ ] Conversation points: Clicking shows typing indicator
+- [ ] Error handling: Typing indicator clears on task failure
+- [ ] Stale timeout: Stuck typing indicator clears after 30s
+
+### Memory Extraction Indicators
+- [ ] Extraction starts: Shows "Analyzing the conversation (you may continue the dialogue)..."
+- [ ] Extraction completes: Indicator hides if summary not triggered
+- [ ] Summary triggered: Shows "Conversation complete! Generating your summary..."
+- [ ] Conversation points refresh after extraction completes
+- [ ] Stale timeout: Stuck extraction indicator clears after 60s
+
+### Summary Generation
+- [ ] Summary complete: Indicator hides, download button appears
+- [ ] Guide Me button hides when Download Summary appears
+- [ ] Both buttons have consistent size and styling
+- [ ] Download button works correctly
+
+### General
 - [ ] Reconnection: WebSocket recovers from disconnect
-- [ ] Stale timeout: Stuck indicator clears after 30s
 - [ ] Conversation switching: No cross-talk between conversations
+- [ ] Multiple indicators: Thinking and extraction can coexist
 
 ## Next Steps (Optional Phase 2)
 

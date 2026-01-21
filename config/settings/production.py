@@ -1,4 +1,4 @@
-# ruff: noqa: E501
+# ruff: noqa: E501, ERA001
 import logging
 
 import sentry_sdk
@@ -20,16 +20,24 @@ from .base import env
 # https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = env.list(
-    "DJANGO_ALLOWED_HOSTS",
-    default=[  # pyright: ignore[reportArgumentType]
-        "10.0.1.204",
-        ".clarenhealth.com",
-        ".perspicacioushealth.com",
-        ".elasticbeanstalk.com",
-        ".backpaindecisionsupport.com",
-    ],
-)  # type: ignore[call-overload]
+ALLOWED_HOSTS = [
+    "10.0.1.204",
+    ".clarenhealth.com",
+    ".perspicacioushealth.com",
+    ".elasticbeanstalk.com",
+    ".backpaindecisionsupport.com",
+]
+
+# ALLOWED_HOSTS = env.list(
+#     "DJANGO_ALLOWED_HOSTS",
+#     default=[  # pyright: ignore[reportArgumentType]
+#         "10.0.1.204",
+#         ".clarenhealth.com",
+#         ".perspicacioushealth.com",
+#         ".elasticbeanstalk.com",
+#         ".backpaindecisionsupport.com",
+#     ],
+# )  # type: ignore[call-overload]
 BASE_DOMAIN = env.str("DJANGO_BASE_DOMAIN", default="clarenhealth.com")  # pyright: ignore[reportArgumentType]
 
 # DATABASES

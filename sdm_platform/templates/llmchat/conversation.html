@@ -52,6 +52,41 @@
       </div>
     </div>
   </div>
+  <!-- SDM Info Modal -->
+  <div class="modal fade"
+       id="sdmInfoModal"
+       tabindex="-1"
+       aria-labelledby="sdmInfoModalLabel"
+       aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="sdmInfoModalLabel">About Shared Decision Making</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <h6>What is Shared Decision Making?</h6>
+          <p>
+            Shared decision making is a collaborative process where you and your healthcare team work together to make decisions about your care. Your values, preferences, and goals matter just as much as the medical evidence.
+          </p>
+          <h6>How This Works</h6>
+          <p>
+            This conversation will guide you through several important topics to help you understand your options and make a decision that's right for you. The topics on the left track our progress through this process.
+          </p>
+          <h6>Your Summary</h6>
+          <p>
+            Once we've discussed all the topics, a personalized PDF summary will be available for you to download and share with your healthcare provider.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Got it</button>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock body %}
 {% block user_javascript %}
   {% compress js %}

@@ -1,5 +1,6 @@
 import logging
 import uuid
+from typing import TYPE_CHECKING
 
 from django.db import models
 from django.db.models.signals import post_delete
@@ -10,6 +11,9 @@ from psycopg import OperationalError
 
 from sdm_platform.llmchat.utils.graphs import get_postgres_checkpointer
 from sdm_platform.users.models import User
+
+if TYPE_CHECKING:
+    from sdm_platform.memory.models import ConversationSummary
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +54,11 @@ class Conversation(models.Model):
     # Optional context
     system_prompt = models.TextField(blank=True, default="")  # initial instructions
     model_name = models.CharField(max_length=100, default="gpt-4")  # which LLM used
+
+    if TYPE_CHECKING:
+        # Reverse OneToOne relationship from ConversationSummary
+        # This helps type checkers understand conversation.summary is valid
+        summary: "ConversationSummary"
 
     def __str__(self):
         return f"Conversation: {self.user.email} / {self.title} ({self.id})"

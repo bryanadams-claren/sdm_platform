@@ -47,6 +47,9 @@ def create_extract_memories_node():
             logger.debug("extract_memories: no messages to extract from")
             return state
 
+        # Get thread_id for WebSocket status updates
+        thread_id = configurable.get("thread_id")
+
         # Fire async task (non-blocking)
         if journey_slug:
             logger.info(
@@ -54,10 +57,12 @@ def create_extract_memories_node():
                 user_id,
                 journey_slug,
             )
-            extract_all_memories.delay(user_id, journey_slug, recent_messages)
+            extract_all_memories.delay(  # pyright: ignore[reportCallIssue]
+                user_id, journey_slug, recent_messages, thread_id
+            )
         else:
             logger.info("Spawning extract_user_profile_memory for user=%s", user_id)
-            extract_user_profile_memory.delay(user_id, recent_messages)
+            extract_user_profile_memory.delay(user_id, recent_messages)  # pyright: ignore[reportCallIssue]
 
         # Return state unchanged
         return state

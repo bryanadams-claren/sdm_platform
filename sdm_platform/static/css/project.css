@@ -265,6 +265,7 @@ footer {
 .chat-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px;
 }
 .chat-item {
@@ -317,8 +318,19 @@ footer {
 }
 
 .point-status-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   flex-shrink: 0;
   font-size: 1.2rem;
+  line-height: 1;
+  margin-top: 2px;
+  min-width: 32px;
+}
+
+.confidence-pct {
+  font-size: 0.65rem;
+  font-weight: 500;
   line-height: 1;
   margin-top: 2px;
 }
@@ -356,16 +368,44 @@ footer {
   margin-top: 3px;
 }
 
-/* Download Summary Button */
-#downloadSummaryBtn {
-  margin-top: 12px;
-  font-weight: 500;
-  transition: all 0.2s ease;
+/* Curiosity prompt styling - slightly italic to feel conversational */
+.point-curiosity {
+  font-style: italic;
 }
 
-#downloadSummaryBtn:hover {
+/* Sidebar action buttons (Guide Me, Download Summary) - consistent sizing */
+.sidebar-action-btn {
+  font-weight: 500;
+  width: calc(100% - 16px);
+  margin-left: 8px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-action-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Extraction indicator */
+.extraction-indicator {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+}
+
+/* Learn more link */
+#learnMoreLink {
+  color: #6c757d;
+  text-decoration: none;
+}
+
+#learnMoreLink:hover {
+  color: #0d6efd;
 }
 
 /* Right Chat Panel */

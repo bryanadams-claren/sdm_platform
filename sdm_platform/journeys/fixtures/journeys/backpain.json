@@ -295,6 +295,7 @@
       "slug": "choice-awareness",
       "title": "Recognize a decision exists",
       "description": "Helping the patient understand that they have a choice to make and what the decision involves",
+      "curiosity_prompt": "I want to make sure you know you have options here",
       "system_message_template": "Help the patient understand they have an active decision to make about their back pain treatment. Explain that multiple valid approaches exist and their input matters in choosing the right path.",
       "elicitation_goals": [
         "Confirm the patient understands this is THEIR decision to make",
@@ -333,6 +334,7 @@
       "slug": "discuss-options",
       "title": "Discuss available options",
       "description": "Presenting all relevant treatment options including conservative approaches and doing nothing",
+      "curiosity_prompt": "Let me walk you through what treatments are available",
       "system_message_template": "Walk the patient through the treatment options available for their back pain. Cover the full spectrum from conservative (self-care, physical therapy) to more intensive (injections, surgery), including watchful waiting. Gauge their interest in learning more about specific options.",
       "elicitation_goals": [
         "Ensure patient is aware of ALL major treatment categories (not just one or two)",
@@ -373,6 +375,7 @@
       "slug": "benefits-and-harms",
       "title": "Understand benefits and harms",
       "description": "Explaining the pros, cons, and probabilities of outcomes for each option, tailored to the patient's situation",
+      "curiosity_prompt": "I'd like to help you understand the pros and cons",
       "system_message_template": "Help the patient understand the specific benefits, risks, and trade-offs of the treatment options they're considering. Tailor the discussion to their situation (pain level, duration, previous treatments). Be honest about uncertainties and success rates.",
       "elicitation_goals": [
         "Identify which specific options they want benefit/risk information about",
@@ -417,6 +420,7 @@
       "slug": "clarify-values",
       "title": "Clarify your values and preferences",
       "description": "Helping the patient identify and articulate what matters most to them in making this decision",
+      "curiosity_prompt": "I'd like to understand what matters most to you",
       "system_message_template": "Help the patient explore and articulate what matters most to them as they consider their options. Focus on understanding their goals, priorities, and what they want to avoid. Connect their values to how different treatment options might serve them.",
       "elicitation_goals": [
         "Identify 2-3 specific activities they want to resume or maintain",
@@ -460,6 +464,7 @@
       "slug": "deliberation-support",
       "title": "Weigh your options",
       "description": "Supporting the patient in weighing trade-offs and considering how options align with their values",
+      "curiosity_prompt": "Let's think through which option fits you best",
       "system_message_template": "Help the patient weigh their options against their values and priorities. Summarize what you've learned about their situation and preferences, then help them see how each option aligns (or doesn't) with what matters to them. Support them in moving toward a decision without pressuring them.",
       "elicitation_goals": [
         "Identify which option(s) they're leaning toward",

@@ -10,6 +10,8 @@ let currentConversationPoints = [];
 let pointsRefreshInterval = null;
 let summaryReady = false;
 let summaryDownloadUrl = null;
+let isExtracting = false;
+let statusUnsubscribe = null;
 
 /**
  * Fetch conversation points from the API
@@ -53,17 +55,45 @@ function renderConversationPoints(points, journeyTitle) {
             ${journeyTitle}
         </h6>
         <div class="px-2 mb-2 text-muted" style="font-size: 0.75rem;">
-            Conversation Topics
+            Shared Decision Making Conversation
+            <a href="#" id="learnMoreLink" class="ms-1" data-bs-toggle="modal" data-bs-target="#sdmInfoModal">
+                <i class="bi bi-info-circle"></i>
+            </a>
         </div>
     `;
   chatList.appendChild(header);
+
+  // Add Guide Me button (hidden if summary is already ready)
+  const guideBtn = document.createElement("button");
+  guideBtn.id = "guideMeBtn";
+  guideBtn.className = "btn btn-primary btn-sm sidebar-action-btn";
+  guideBtn.innerHTML = '<i class="bi bi-compass me-1"></i> Guide Me';
+  guideBtn.addEventListener("click", handleGuideMeClick);
+  // Hide Guide Me if summary is already available
+  if (summaryDownloadUrl) {
+    guideBtn.style.display = "none";
+  }
+  header.appendChild(guideBtn);
+
+  // Add extraction status indicator (hidden by default)
+  const extractionIndicator = document.createElement("div");
+  extractionIndicator.id = "extractionIndicator";
+  extractionIndicator.className = "extraction-indicator px-2 mb-2";
+  extractionIndicator.style.display = isExtracting ? "flex" : "none";
+  extractionIndicator.innerHTML = `
+    <div class="spinner-border spinner-border-sm text-muted me-2" role="status">
+      <span class="visually-hidden">Analyzing...</span>
+    </div>
+    <span class="text-muted" style="font-size: 0.75rem;">Analyzing the conversation (you may continue the dialogue)...</span>
+  `;
+  header.appendChild(extractionIndicator);
 
   // Re-add download button if summary is ready
   if (summaryDownloadUrl) {
     const btn = document.createElement("a");
     btn.id = "downloadSummaryBtn";
     btn.href = summaryDownloadUrl;
-    btn.className = "btn btn-success btn-sm mt-2 w-100";
+    btn.className = "btn btn-success btn-sm sidebar-action-btn";
     btn.innerHTML = '<i class="bi bi-download me-1"></i> Download Summary PDF';
     header.appendChild(btn);
   }
@@ -100,14 +130,22 @@ function createConversationPointElement(point) {
     item.classList.add("completed");
   }
 
-  // Create status indicator (checkbox-like)
+  // Create status indicator with confidence percentage
   const statusIcon = document.createElement("div");
   statusIcon.className = "point-status-icon";
 
   if (point.is_addressed) {
-    statusIcon.innerHTML =
-      '<i class="bi bi-check-circle-fill text-success"></i>';
+    statusIcon.innerHTML = `
+      <i class="bi bi-check-circle-fill text-success"></i>
+      <span class="confidence-pct text-success">${Math.round(point.confidence_score * 100)}%</span>
+    `;
     statusIcon.title = `Completed (${Math.round(point.confidence_score * 100)}% confidence)`;
+  } else if (point.confidence_score > 0) {
+    statusIcon.innerHTML = `
+      <i class="bi bi-circle text-muted"></i>
+      <span class="confidence-pct text-muted">${Math.round(point.confidence_score * 100)}%</span>
+    `;
+    statusIcon.title = `In progress (${Math.round(point.confidence_score * 100)}% confidence)`;
   } else {
     statusIcon.innerHTML = '<i class="bi bi-circle text-muted"></i>';
     statusIcon.title = "Not yet discussed";
@@ -136,8 +174,14 @@ function createConversationPointElement(point) {
       summary.textContent += "...";
     }
     content.appendChild(summary);
+  } else if (point.curiosity_prompt) {
+    // Show curiosity prompt for incomplete points (first-person AI perspective)
+    const desc = document.createElement("div");
+    desc.className = "point-description point-curiosity";
+    desc.textContent = point.curiosity_prompt;
+    content.appendChild(desc);
   } else if (point.description) {
-    // Show description if not yet addressed
+    // Fallback to description if no curiosity prompt
     const desc = document.createElement("div");
     desc.className = "point-description";
     desc.textContent =
@@ -160,6 +204,25 @@ function createConversationPointElement(point) {
  * Handle clicking on a conversation point - initiates AI discussion of the topic
  * @param {Object} point - The clicked conversation point
  */
+
+/**
+ * Handle clicking the "Guide Me" button - initiates the next incomplete conversation point
+ */
+function handleGuideMeClick() {
+  // Find first incomplete point (already sorted by sort_order from API)
+  const incompletePoint = currentConversationPoints.find(
+    (p) => !p.is_addressed,
+  );
+
+  if (incompletePoint) {
+    handleConversationPointClick(incompletePoint);
+  } else {
+    // All points complete - show a friendly message
+    alert(
+      "Great job! You've covered all the conversation topics. Your summary PDF should be available soon.",
+    );
+  }
+}
 
 /**
  * Load and display conversation points for the active conversation
@@ -305,7 +368,7 @@ async function checkSummaryStatus(convId) {
 }
 
 /**
- * Display the download summary button in the header
+ * Display the download summary button in the header and hide Guide Me button
  * @param {string} downloadUrl - URL to download the PDF
  */
 function showDownloadButton(downloadUrl) {
@@ -320,10 +383,16 @@ function showDownloadButton(downloadUrl) {
     return;
   }
 
+  // Hide the Guide Me button when Download Summary is shown
+  const guideBtn = document.getElementById("guideMeBtn");
+  if (guideBtn) {
+    guideBtn.style.display = "none";
+  }
+
   const btn = document.createElement("a");
   btn.id = "downloadSummaryBtn";
   btn.href = downloadUrl;
-  btn.className = "btn btn-success btn-sm mt-2 w-100";
+  btn.className = "btn btn-success btn-sm sidebar-action-btn";
   btn.innerHTML = '<i class="bi bi-download me-1"></i> Download Summary PDF';
   header.appendChild(btn);
 }
@@ -344,6 +413,101 @@ function startSummaryCheck(convId) {
   setInterval(() => checkSummaryStatus(convId), 30000);
 }
 
+/**
+ * Show the extraction indicator with a custom message
+ * @param {string} message - The message to display
+ */
+function showExtractionIndicator(message) {
+  isExtracting = true;
+  const indicator = document.getElementById("extractionIndicator");
+  if (indicator) {
+    indicator.style.display = "flex";
+    // Update the message text if provided
+    if (message) {
+      const messageSpan = indicator.querySelector("span");
+      if (messageSpan) {
+        messageSpan.textContent = message;
+      }
+    }
+  }
+}
+
+/**
+ * Hide the extraction indicator
+ */
+function hideExtractionIndicator() {
+  isExtracting = false;
+  const indicator = document.getElementById("extractionIndicator");
+  if (indicator) {
+    indicator.style.display = "none";
+  }
+}
+
+/**
+ * Handle status WebSocket events for extraction
+ * @param {Object} status - Status event data
+ */
+function handleStatusChange(status) {
+  if (status.type === "extraction_start") {
+    console.log("[ConversationPoints] Extraction started");
+    showExtractionIndicator(
+      "Analyzing the conversation (you may continue the dialogue)...",
+    );
+  } else if (status.type === "extraction_complete") {
+    console.log("[ConversationPoints] Extraction complete, refreshing points");
+    // If summary generation was triggered, update the indicator message
+    if (status.summary_triggered) {
+      console.log("[ConversationPoints] Summary generation triggered");
+      showExtractionIndicator(
+        "Conversation complete! Generating your summary...",
+      );
+    } else {
+      hideExtractionIndicator();
+    }
+    // Immediately refresh conversation points when extraction completes
+    if (window.activeConvId) {
+      loadConversationPoints(window.activeConvId);
+    }
+  } else if (status.type === "summary_complete") {
+    console.log("[ConversationPoints] Summary complete, refreshing points");
+    hideExtractionIndicator();
+    // Refresh to show the download button
+    if (window.activeConvId) {
+      loadConversationPoints(window.activeConvId);
+      checkSummaryStatus(window.activeConvId);
+    }
+  }
+}
+
+/**
+ * Subscribe to status WebSocket events
+ */
+function subscribeToStatusEvents() {
+  // Unsubscribe from previous subscription if any
+  if (statusUnsubscribe) {
+    statusUnsubscribe();
+    statusUnsubscribe = null;
+  }
+
+  // Subscribe to status changes
+  if (window.StatusWebSocket) {
+    statusUnsubscribe =
+      window.StatusWebSocket.onStatusChange(handleStatusChange);
+    console.log("[ConversationPoints] Subscribed to status events");
+  }
+}
+
+/**
+ * Unsubscribe from status WebSocket events
+ */
+function unsubscribeFromStatusEvents() {
+  if (statusUnsubscribe) {
+    statusUnsubscribe();
+    statusUnsubscribe = null;
+    console.log("[ConversationPoints] Unsubscribed from status events");
+  }
+}
+
 // Export for use in other scripts
 window.ConversationPoints = {
   load: loadConversationPoints,
@@ -351,4 +515,6 @@ window.ConversationPoints = {
   stopRefresh: stopPointsRefresh,
   getCurrent: () => currentConversationPoints,
   startSummaryCheck: startSummaryCheck,
+  subscribeToStatus: subscribeToStatusEvents,
+  unsubscribeFromStatus: unsubscribeFromStatusEvents,
 };

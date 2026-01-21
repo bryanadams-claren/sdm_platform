@@ -180,7 +180,7 @@ def extract_conversation_point_memories(  # noqa: C901, PLR0912, PLR0915
         messages_json: Recent messages as list of {"role": str, "content": str}
     """
     if not messages_json:
-        return
+        return None
 
     try:
         # Get all conversation points for this journey
@@ -191,7 +191,7 @@ def extract_conversation_point_memories(  # noqa: C901, PLR0912, PLR0915
 
         if not points.exists():
             logger.debug("No conversation points found for journey %s", journey_slug)
-            return
+            return None
 
         model = init_chat_model(EXTRACTION_MODEL)
 
@@ -398,9 +398,10 @@ PREVIOUS ASSESSMENT:
             user_id,
             journey_slug,
         )
+        return False
     else:
         # Check if all points are addressed and trigger PDF generation if so
-        check_and_trigger_summary_generation(user_id, journey_slug)
+        return check_and_trigger_summary_generation(user_id, journey_slug)
 
 
 @shared_task()
@@ -408,6 +409,7 @@ def extract_all_memories(
     user_id: str,
     journey_slug: str,
     messages_json: list[dict],
+    thread_id: str | None = None,
 ):
     """
     Combined task to extract all types of memories.
@@ -416,21 +418,43 @@ def extract_all_memories(
     - User profile information
     - Conversation point semantic memories
 
+    Sends WebSocket events to notify frontend of extraction progress.
+
     Args:
         user_id: User identifier (email)
         journey_slug: Journey slug (optional, for conversation points)
         messages_json: Recent messages as list of {"role": str, "content": str}
+        thread_id: Thread ID for WebSocket status updates (optional)
     """
-    # Extract user profile
-    extract_user_profile_memory(user_id, messages_json)
+    # Import here to avoid circular imports
+    from sdm_platform.llmchat.utils.status import (  # noqa: PLC0415
+        send_extraction_complete,
+    )
+    from sdm_platform.llmchat.utils.status import send_extraction_start  # noqa: PLC0415
 
-    # Extract conversation point memories (if journey specified)
-    if journey_slug:
-        extract_conversation_point_memories(
-            user_id,
-            journey_slug,
-            messages_json,
-        )
+    # Notify frontend that extraction is starting
+    if thread_id:
+        send_extraction_start(thread_id)
+
+    summary_triggered = False
+    try:
+        # Extract user profile
+        extract_user_profile_memory(user_id, messages_json)
+
+        # Extract conversation point memories (if journey specified)
+        if journey_slug:
+            summary_triggered = (
+                extract_conversation_point_memories(
+                    user_id,
+                    journey_slug,
+                    messages_json,
+                )
+                or False
+            )
+    finally:
+        # Always notify frontend that extraction is complete
+        if thread_id:
+            send_extraction_complete(thread_id, summary_triggered=summary_triggered)
 
 
 @shared_task(bind=True, soft_time_limit=300, time_limit=600, max_retries=2)
@@ -495,6 +519,15 @@ def generate_conversation_summary_pdf(self, conversation_id: str) -> str:
         summary.save()
 
         logger.info("Generated summary PDF for conversation %s", conversation_id)
+
+        # Notify frontend that summary is ready
+        if conversation.thread_id:
+            from sdm_platform.llmchat.utils.status import (  # noqa: PLC0415
+                send_summary_complete,
+            )
+
+            send_summary_complete(conversation.thread_id)
+
         return str(summary.id)
 
     except Exception as exc:
@@ -508,7 +541,7 @@ def generate_conversation_summary_pdf(self, conversation_id: str) -> str:
 def check_and_trigger_summary_generation(
     user_id: str,
     journey_slug: str,
-):
+) -> bool:
     """
     Check if all points are addressed and trigger PDF generation if so.
 
@@ -517,6 +550,9 @@ def check_and_trigger_summary_generation(
     Args:
         user_id: User identifier (email)
         journey_slug: Journey slug
+
+    Returns:
+        True if summary generation was triggered, False otherwise
     """
     from sdm_platform.journeys.models import Journey  # noqa: PLC0415
     from sdm_platform.journeys.models import JourneyResponse  # noqa: PLC0415
@@ -538,11 +574,11 @@ def check_and_trigger_summary_generation(
                 user_id,
                 journey_slug,
             )
-            return
+            return False
 
         # Skip if summary already exists
         if hasattr(conversation, "summary"):
-            return
+            return False
 
         service = ConversationSummaryService(conversation)
         if service.is_complete():
@@ -550,16 +586,20 @@ def check_and_trigger_summary_generation(
                 "All points addressed for %s, triggering PDF generation",
                 conversation.conv_id,
             )
-            generate_conversation_summary_pdf.delay(conversation.conv_id)
+            generate_conversation_summary_pdf.delay(conversation.conv_id)  # pyright: ignore[reportCallIssue]
+            return True
+        return False  # noqa: TRY300
     except (User.DoesNotExist, Journey.DoesNotExist, JourneyResponse.DoesNotExist):
         logger.warning(
             "Could not find user/journey/response for %s/%s when checking summary",
             user_id,
             journey_slug,
         )
+        return False
     except Exception:
         logger.exception(
             "Error checking summary generation for user %s, journey %s",
             user_id,
             journey_slug,
         )
+        return False

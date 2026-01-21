@@ -137,3 +137,95 @@ def send_thinking_stream(thread_name: str, thought: str) -> None:
             },
         )
         logger.debug("Sent thinking_stream status for thread %s", thread_name)
+
+
+def send_extraction_start(thread_name: str) -> None:
+    """
+    Notify clients that memory extraction is starting.
+
+    Called when the background task begins analyzing conversation points.
+
+    Args:
+        thread_name: Thread ID for the conversation
+    """
+    status_group = f"status_{thread_name}"
+    timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)).isoformat()
+
+    status_data = {
+        "type": "extraction_start",
+        "timestamp": timestamp,
+    }
+
+    if channel_layer := get_channel_layer():
+        async_to_sync(channel_layer.group_send)(
+            status_group,
+            {
+                "type": "status.update",
+                "data": status_data,
+            },
+        )
+        logger.info("Sent extraction_start status for thread %s", thread_name)
+
+
+def send_extraction_complete(
+    thread_name: str, *, summary_triggered: bool = False
+) -> None:
+    """
+    Notify clients that memory extraction has completed.
+
+    Called when the background task finishes analyzing conversation points.
+
+    Args:
+        thread_name: Thread ID for the conversation
+        summary_triggered: Whether summary generation was triggered (keyword-only)
+    """
+    status_group = f"status_{thread_name}"
+    timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)).isoformat()
+
+    status_data = {
+        "type": "extraction_complete",
+        "timestamp": timestamp,
+        "summary_triggered": summary_triggered,
+    }
+
+    if channel_layer := get_channel_layer():
+        async_to_sync(channel_layer.group_send)(
+            status_group,
+            {
+                "type": "status.update",
+                "data": status_data,
+            },
+        )
+        logger.info(
+            "Sent extraction_complete status for thread %s (summary_triggered=%s)",
+            thread_name,
+            summary_triggered,
+        )
+
+
+def send_summary_complete(thread_name: str) -> None:
+    """
+    Notify clients that summary PDF generation has completed.
+
+    Called when the PDF has been generated and is ready for download.
+
+    Args:
+        thread_name: Thread ID for the conversation
+    """
+    status_group = f"status_{thread_name}"
+    timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)).isoformat()
+
+    status_data = {
+        "type": "summary_complete",
+        "timestamp": timestamp,
+    }
+
+    if channel_layer := get_channel_layer():
+        async_to_sync(channel_layer.group_send)(
+            status_group,
+            {
+                "type": "status.update",
+                "data": status_data,
+            },
+        )
+        logger.info("Sent summary_complete status for thread %s", thread_name)

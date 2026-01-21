@@ -197,9 +197,10 @@ async function apiFetchChatHistory(convId) {
 
 /** Set the active chat by id, open the socket to that chat, and load/render its messages */
 async function setActiveChat(chatId) {
-  // Stop refreshing points for previous conversation
+  // Stop refreshing points and unsubscribe from status events for previous conversation
   if (window.ConversationPoints) {
     window.ConversationPoints.stopRefresh();
+    window.ConversationPoints.unsubscribeFromStatus();
   }
 
   // Disconnect previous WebSocket connections
@@ -288,6 +289,7 @@ async function setActiveChat(chatId) {
     window.ConversationPoints.load(activeConvId);
     window.ConversationPoints.startRefresh(activeConvId);
     window.ConversationPoints.startSummaryCheck(activeConvId);
+    window.ConversationPoints.subscribeToStatus();
   }
 }
 

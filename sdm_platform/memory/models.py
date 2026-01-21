@@ -33,6 +33,13 @@ class ConversationPoint(models.Model):
     description = models.TextField(
         blank=True, help_text="Additional context about this conversation point"
     )
+    curiosity_prompt = models.TextField(
+        blank=True,
+        help_text=(
+            "First-person curiosity text shown to users "
+            "(e.g., 'I'd like to understand what matters most to you')"
+        ),
+    )
 
     # The system message to inject when user clicks this point
     system_message_template = models.TextField(

@@ -267,7 +267,8 @@ def handle_onboarding_submission(request, journey):  # noqa: C901
                 send_ai_initiated_message.delay(  # pyright: ignore[reportCallIssue]
                     thread_id,
                     user.email,
-                    first_point.system_message_template,
+                    first_point.slug,
+                    journey.slug,
                 )
                 logger.info(
                     "Initiated conversation for %s with first point: %s",

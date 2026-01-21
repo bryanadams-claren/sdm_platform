@@ -295,7 +295,24 @@
       "slug": "choice-awareness",
       "title": "Recognize a decision exists",
       "description": "Helping the patient understand that they have a choice to make and what the decision involves",
-      "system_message_template": "I want to make sure you know that you have a decision to make here, and your input matters. Let me explain what this decision is about and the fact that there are different paths we could take together.",
+      "system_message_template": "Help the patient understand they have an active decision to make about their back pain treatment. Explain that multiple valid approaches exist and their input matters in choosing the right path.",
+      "elicitation_goals": [
+        "Confirm the patient understands this is THEIR decision to make",
+        "Assess their current understanding of available treatment approaches",
+        "Identify if they feel pressured toward any particular option",
+        "Understand who else (family, other doctors) might be involved in their decision"
+      ],
+      "example_questions": [
+        "Before we dive into specifics, I want to make sure you know that how we approach your back pain is ultimately your choice. Did you know there are several different treatment paths we could consider?",
+        "Has anyone already suggested a particular treatment to you? I want to make sure you're aware of all your options.",
+        "Is there anyone else - a family member, or another doctor - who you'd want to include in thinking through this decision?",
+        "What's your understanding so far of what can be done for back pain like yours?"
+      ],
+      "completion_criteria": {
+        "patient_acknowledges_choice": true,
+        "current_understanding_assessed": true,
+        "decision_stakeholders_identified": true
+      },
       "semantic_keywords": [
         "do I have a choice",
         "what are we deciding",
@@ -308,7 +325,7 @@
         "whether or not to",
         "alternatives"
       ],
-      "confidence_threshold": 0.9,
+      "confidence_threshold": 0.85,
       "sort_order": 1,
       "is_active": true
     },
@@ -316,7 +333,24 @@
       "slug": "discuss-options",
       "title": "Discuss available options",
       "description": "Presenting all relevant treatment options including conservative approaches and doing nothing",
-      "system_message_template": "Let me walk you through the options available to you. This includes all viable approaches—from more conservative treatments to more aggressive ones, and also the option of watchful waiting or no treatment. Which options would you like to learn more about?",
+      "system_message_template": "Walk the patient through the treatment options available for their back pain. Cover the full spectrum from conservative (self-care, physical therapy) to more intensive (injections, surgery), including watchful waiting. Gauge their interest in learning more about specific options.",
+      "elicitation_goals": [
+        "Ensure patient is aware of ALL major treatment categories (not just one or two)",
+        "Identify which options they've already heard about or considered",
+        "Discover which options they want to learn more about",
+        "Understand if any options are already ruled out in their mind (and why)"
+      ],
+      "example_questions": [
+        "There are several approaches we can consider: self-care and watchful waiting, physical therapy, medications, injections, and in some cases surgery. Which of these have you already heard about?",
+        "Are there any treatments you've already ruled out, or any you're particularly interested in exploring?",
+        "Some people prefer to start with the least invasive options and see how they do. Others want to be more aggressive. What's your initial instinct?",
+        "Is there anything you've read or heard about back pain treatments that you'd like me to address?"
+      ],
+      "completion_criteria": {
+        "all_major_options_mentioned": true,
+        "patient_interest_gauged": true,
+        "ruled_out_options_identified": true
+      },
       "semantic_keywords": [
         "what are my options",
         "treatment options",
@@ -331,7 +365,7 @@
         "Option A",
         "Option B"
       ],
-      "confidence_threshold": 0.9,
+      "confidence_threshold": 0.85,
       "sort_order": 2,
       "is_active": true
     },
@@ -339,7 +373,26 @@
       "slug": "benefits-and-harms",
       "title": "Understand benefits and harms",
       "description": "Explaining the pros, cons, and probabilities of outcomes for each option, tailored to the patient's situation",
-      "system_message_template": "For each option, I'd like to help you understand the potential benefits, risks, and uncertainties. This includes how likely different outcomes are, based on your specific situation. Would you like me to go through the pros and cons of each option?",
+      "system_message_template": "Help the patient understand the specific benefits, risks, and trade-offs of the treatment options they're considering. Tailor the discussion to their situation (pain level, duration, previous treatments). Be honest about uncertainties and success rates.",
+      "elicitation_goals": [
+        "Identify which specific options they want benefit/risk information about",
+        "Understand their biggest concerns or fears about treatment",
+        "Assess their tolerance for risk vs. their desire for quick results",
+        "Clarify any misconceptions about treatment outcomes"
+      ],
+      "example_questions": [
+        "Which treatment options would you like to know more about in terms of what could go well and what could go wrong?",
+        "When you think about treating your back pain, what worries you the most?",
+        "Are you more concerned about potential side effects, or about whether a treatment will actually work?",
+        "Some treatments offer quicker relief but may not last as long. Others take time but address the root cause. How do you feel about that trade-off?",
+        "Have you heard anything about these treatments - good or bad - that you'd like me to confirm or correct?"
+      ],
+      "completion_criteria": {
+        "specific_options_discussed": true,
+        "concerns_identified": true,
+        "risk_tolerance_explored": true,
+        "misconceptions_addressed": true
+      },
       "semantic_keywords": [
         "pros and cons",
         "benefits",
@@ -356,7 +409,7 @@
         "complications",
         "pain relief"
       ],
-      "confidence_threshold": 0.9,
+      "confidence_threshold": 0.85,
       "sort_order": 3,
       "is_active": true
     },
@@ -364,7 +417,26 @@
       "slug": "clarify-values",
       "title": "Clarify your values and preferences",
       "description": "Helping the patient identify and articulate what matters most to them in making this decision",
-      "system_message_template": "I'd like to understand what matters most to you as we think through this decision. What outcomes are you hoping for? Are there things you want to avoid? Understanding your priorities will help us find the option that fits you best.",
+      "system_message_template": "Help the patient explore and articulate what matters most to them as they consider their options. Focus on understanding their goals, priorities, and what they want to avoid. Connect their values to how different treatment options might serve them.",
+      "elicitation_goals": [
+        "Identify 2-3 specific activities they want to resume or maintain",
+        "Understand their timeline expectations or constraints",
+        "Learn what outcomes they most want to avoid (e.g., surgery, dependency on meds)",
+        "Discover how this decision fits into their broader life circumstances"
+      ],
+      "example_questions": [
+        "What activities has your back pain stopped you from doing that you most want to get back to?",
+        "Is there a timeline that matters to you - an event coming up, a goal you're working toward?",
+        "When you imagine the best possible outcome, what does that look like for you?",
+        "Is there anything you really want to avoid - whether that's a particular treatment, a side effect, or an outcome?",
+        "How does this fit with everything else going on in your life right now? Are there other health issues, work demands, or family situations I should know about?"
+      ],
+      "completion_criteria": {
+        "activities_to_resume_identified": true,
+        "timeline_discussed": true,
+        "outcomes_to_avoid_identified": true,
+        "life_context_understood": true
+      },
       "semantic_keywords": [
         "what matters to me",
         "my priorities",
@@ -380,7 +452,7 @@
         "independence",
         "family activities"
       ],
-      "confidence_threshold": 0.9,
+      "confidence_threshold": 0.85,
       "sort_order": 4,
       "is_active": true
     },
@@ -388,7 +460,27 @@
       "slug": "deliberation-support",
       "title": "Weigh your options",
       "description": "Supporting the patient in weighing trade-offs and considering how options align with their values",
-      "system_message_template": "Now that you know your options and what matters to you, let's think through how each option fits with your priorities. We can explore 'what if' scenarios, and I can help you see where each option aligns or conflicts with your goals. Take your time—this is an important decision.",
+      "system_message_template": "Help the patient weigh their options against their values and priorities. Summarize what you've learned about their situation and preferences, then help them see how each option aligns (or doesn't) with what matters to them. Support them in moving toward a decision without pressuring them.",
+      "elicitation_goals": [
+        "Identify which option(s) they're leaning toward",
+        "Surface any remaining uncertainties or questions",
+        "Understand what would help them feel confident in a decision",
+        "Determine their readiness to make a decision or need for more time/input"
+      ],
+      "example_questions": [
+        "Based on everything we've discussed, is there an option that feels like it might be right for you?",
+        "What questions or concerns are still on your mind as you think about this decision?",
+        "What would help you feel more confident about choosing a path forward?",
+        "Would it help to talk through how [specific option] aligns with your goal of [specific goal they mentioned]?",
+        "Do you feel ready to make a decision, or would you like more time to think about it or discuss it with someone?",
+        "Is there anything you'd want to ask your doctor before deciding?"
+      ],
+      "completion_criteria": {
+        "leaning_identified": true,
+        "remaining_concerns_surfaced": true,
+        "readiness_assessed": true,
+        "next_steps_discussed": true
+      },
       "semantic_keywords": [
         "weighing options",
         "trade-offs",
@@ -404,7 +496,7 @@
         "involve my family",
         "not sure yet"
       ],
-      "confidence_threshold": 0.9,
+      "confidence_threshold": 0.85,
       "sort_order": 5,
       "is_active": true
     }

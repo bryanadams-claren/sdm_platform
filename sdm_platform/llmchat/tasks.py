@@ -26,6 +26,74 @@ from sdm_platform.memory.store import get_memory_store
 logger = logging.getLogger(__name__)
 
 
+def _build_elicitation_context(conversation_point, point_memory) -> list[str]:
+    """
+    Build system prompt sections for conversation point elicitation.
+
+    Returns a list of prompt sections for elicitation goals, example questions,
+    existing memory context, and task instructions.
+    """
+    sections = []
+
+    # Add conversation point context
+    sections.append(
+        f"## Conversation Point: {conversation_point.title}\n"
+        f"{conversation_point.description}"
+    )
+
+    # Add elicitation goals
+    if conversation_point.elicitation_goals:
+        goals_text = "\n".join(
+            f"- {goal}" for goal in conversation_point.elicitation_goals
+        )
+        sections.append(
+            f"## Your Goals for This Discussion\n"
+            f"Try to learn the following from the patient:\n{goals_text}"
+        )
+
+    # Add example questions as guidance
+    if conversation_point.example_questions:
+        questions_text = "\n".join(
+            f"- {q}" for q in conversation_point.example_questions
+        )
+        sections.append(f"## Example Questions You Could Adapt\n{questions_text}")
+
+    # Add existing memory context
+    if point_memory and (point_memory.extracted_points or point_memory.relevant_quotes):
+        memory_parts = ["## What You Already Know About This Topic"]
+
+        if point_memory.extracted_points:
+            memory_parts.append("Key points already discussed:")
+            memory_parts.extend(f"- {pt}" for pt in point_memory.extracted_points)
+
+        if point_memory.relevant_quotes:
+            memory_parts.append("\nRelevant things the patient has said:")
+            memory_parts.extend(f'- "{q}"' for q in point_memory.relevant_quotes[:3])
+
+        memory_parts.append(
+            "\nBuild on this knowledge. Don't repeat questions about "
+            "things you already know. Focus on gaps and deeper exploration."
+        )
+        sections.append("\n".join(memory_parts))
+    else:
+        sections.append(
+            "## Context\n"
+            "This is the first time exploring this topic with the patient. "
+            "Start with open-ended questions to understand their situation."
+        )
+
+    # Add instruction for the AI
+    sections.append(
+        "## Your Task\n"
+        "You are proactively starting a discussion about this topic. "
+        "Ask a thoughtful question that helps achieve your elicitation goals. "
+        "Be conversational and empathetic. Ask ONE clear question - "
+        "don't overwhelm with multiple questions at once."
+    )
+
+    return sections
+
+
 @shared_task()
 def send_llm_reply(thread_name: str, username: str, user_input: str):
     """
@@ -103,19 +171,28 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
 
 
 @shared_task()
-def send_ai_initiated_message(thread_name: str, username: str, ai_prompt: str):
+def send_ai_initiated_message(
+    thread_name: str,
+    username: str,
+    point_slug: str,
+    journey_slug: str,
+):
     """
     Send an AI-initiated message (conversation point prompt).
 
     Unlike send_llm_reply, this doesn't respond to a user message.
-    Instead, the AI proactively starts a conversation about a topic.
+    Instead, the AI proactively starts a conversation about a topic,
+    using existing memory context to ask more targeted questions.
 
     Args:
         thread_name: Thread ID for the conversation
         username: User's email
-        ai_prompt: The prompt/question the AI should ask (from conversation point)
+        point_slug: Slug of the conversation point to initiate
+        journey_slug: Slug of the journey
     """
     from sdm_platform.llmchat.models import Conversation  # noqa: PLC0415
+    from sdm_platform.memory.managers import ConversationPointManager  # noqa: PLC0415
+    from sdm_platform.memory.models import ConversationPoint  # noqa: PLC0415
 
     # Notify clients that AI is starting to think (triggered by conversation point)
     send_thinking_start(thread_name, trigger="conversation_point")
@@ -124,6 +201,13 @@ def send_ai_initiated_message(thread_name: str, username: str, ai_prompt: str):
         logger.info("Sending AI-initiated message for thread %s", thread_name)
         conversation = Conversation.objects.select_related("journey").get(
             thread_id=thread_name
+        )
+
+        # Get the conversation point with its elicitation guidance
+        conversation_point = ConversationPoint.objects.get(
+            journey__slug=journey_slug,
+            slug=point_slug,
+            is_active=True,
         )
 
         # Build config with user_id for memory lookup
@@ -146,16 +230,26 @@ def send_ai_initiated_message(thread_name: str, username: str, ai_prompt: str):
             profile = UserProfileManager.get_profile(username, store=store)
             user_context = UserProfileManager.format_for_prompt(profile)
 
-            # Build context for the AI's message
+            # Load existing memory for this conversation point
+            point_memory = ConversationPointManager.get_point_memory(
+                user_id=username,
+                journey_slug=journey_slug,
+                point_slug=point_slug,
+                store=store,
+            )
+
+            # Build the enhanced system prompt
             system_context_parts = []
+
             if conversation.system_prompt:
                 system_context_parts.append(conversation.system_prompt)
+
             if user_context:
                 system_context_parts.append(user_context)
 
-            system_context_parts.append(
-                "You are proactively starting a new topic in the conversation. "
-                f"Ask the user about the following: {ai_prompt}"
+            # Add elicitation context (goals, examples, memory, instructions)
+            system_context_parts.extend(
+                _build_elicitation_context(conversation_point, point_memory)
             )
 
             # Call the LLM directly to generate the AI's proactive message
@@ -174,7 +268,10 @@ def send_ai_initiated_message(thread_name: str, username: str, ai_prompt: str):
             # Create the AI message to add to history
             ai_message = AIMessage(
                 content=ai_response.content,
-                metadata={"initiated_conversation_point": True},
+                metadata={
+                    "initiated_conversation_point": True,
+                    "conversation_point_slug": point_slug,
+                },
             )
 
             # Update the graph state to include this new AI message

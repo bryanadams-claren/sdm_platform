@@ -59,6 +59,32 @@ class ConversationPoint(models.Model):
         help_text="Confidence threshold (0-1) for considering this point addressed",
     )
 
+    # Elicitation guidance for the AI
+    elicitation_goals = models.JSONField(
+        default=list,
+        help_text=(
+            "List of specific information goals the AI should try to achieve. "
+            "Example: ['Identify 2-3 activities patient wants to resume', "
+            "'Understand their timeline expectations']"
+        ),
+    )
+
+    example_questions = models.JSONField(
+        default=list,
+        help_text=(
+            "Example questions the AI can use or adapt when initiating this point. "
+            "These guide the AI toward more effective elicitation."
+        ),
+    )
+
+    completion_criteria = models.JSONField(
+        default=dict,
+        help_text=(
+            "Criteria for considering this point addressed. "
+            "Example: {'activities_identified': true, 'timeline_discussed': true}"
+        ),
+    )
+
     # Display order
     sort_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)

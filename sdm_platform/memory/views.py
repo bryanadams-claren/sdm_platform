@@ -192,7 +192,8 @@ def initiate_conversation_point(request, conv_id, point_slug):
         send_ai_initiated_message.delay(  # pyright: ignore[reportCallIssue]
             thread_id,
             request.user.email,
-            conversation_point.system_message_template,
+            conversation_point.slug,
+            conversation.journey.slug,
         )
 
         return JsonResponse(

@@ -259,6 +259,10 @@ class Command(BaseCommand):
                     "confidence_threshold": cp_data.get("confidence_threshold", 0.7),
                     "sort_order": cp_data.get("sort_order", idx),
                     "is_active": cp_data.get("is_active", True),
+                    # Elicitation guidance fields
+                    "elicitation_goals": cp_data.get("elicitation_goals", []),
+                    "example_questions": cp_data.get("example_questions", []),
+                    "completion_criteria": cp_data.get("completion_criteria", {}),
                 },
             )
 

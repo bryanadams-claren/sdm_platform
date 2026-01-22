@@ -1,15 +1,30 @@
 {% extends "base.html" %}
 
 {% block title %}
-  Forbidden (403)
+  Forbidden - Claren Health
 {% endblock title %}
 {% block content %}
-  <h1>Forbidden (403)</h1>
-  <p>
-    {% if exception %}
-      {{ exception }}
-    {% else %}
-      You're not allowed to access this page.
-    {% endif %}
-  </p>
+  <div class="container mt-5 pt-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm">
+          <div class="card-body p-5 text-center">
+            <h1 class="display-1 text-danger mb-4">403</h1>
+            <h2 class="card-title mb-3">Access Forbidden</h2>
+            <p class="text-muted mb-4">
+              {% if exception %}
+                {{ exception }}
+              {% else %}
+                You're not allowed to access this page.
+              {% endif %}
+            </p>
+            <div class="d-grid gap-2">
+              <a href="{% url 'home' %}" class="btn btn-primary btn-lg">Go to Homepage</a>
+              <button onclick="history.back();" class="btn btn-outline-secondary">Go Back</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock content %}

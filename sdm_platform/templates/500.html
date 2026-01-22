@@ -1,12 +1,26 @@
 {% extends "base.html" %}
 
 {% block title %}
-  Server Error
+  Server Error - Claren Health
 {% endblock title %}
 {% block content %}
-  <h1>Ooops!!! 500</h1>
-  <h3>Looks like something went wrong!</h3>
-  <p>
-    We track these errors automatically, but if the problem persists feel free to contact us. In the meantime, try refreshing.
-  </p>
+  <div class="container mt-5 pt-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm">
+          <div class="card-body p-5 text-center">
+            <h1 class="display-1 text-danger mb-4">500</h1>
+            <h2 class="card-title mb-3">Oops! Something went wrong</h2>
+            <p class="text-muted mb-4">
+              We track these errors automatically, but if the problem persists feel free to contact us. In the meantime, try refreshing.
+            </p>
+            <div class="d-grid gap-2">
+              <a href="{% url 'home' %}" class="btn btn-primary btn-lg">Go to Homepage</a>
+              <button onclick="location.reload();" class="btn btn-outline-secondary">Refresh Page</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock content %}

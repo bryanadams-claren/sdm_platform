@@ -5,6 +5,7 @@
    - Imports inside Celery tasks are intentional (circular import avoidance)
    - The database is PostgreSQL, and the project uses django-environ for environment variable management (with local environment variables in `.envs\.local`)
    - The production environment is AWS with Elastic Beanstalk for deploying the web (see `.elasticbeanstalk` and `.ebextensions` for web and worker configurations), with RDS for the database, SES for email, and S3 for file storage
+   - The EB environment only deploys from git, so code changes must be committed to git before deploying to EB
    - The local environment is Windows, so please use powershell instead of bash
 
    ## Key architecture and apps

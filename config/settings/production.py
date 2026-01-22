@@ -21,12 +21,19 @@ from .base import env
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = [
-    "10.0.1.204",
     ".clarenhealth.com",
     ".perspicacioushealth.com",
     ".elasticbeanstalk.com",
     ".backpaindecisionsupport.com",
 ]
+
+# Allow all IPs in 10.0.0.0/8 range (VPC internal IPs) for ELB health checks
+import socket  # noqa: E402
+
+hostname = socket.gethostname()
+internal_ip = socket.gethostbyname(hostname)
+if internal_ip.startswith("10."):
+    ALLOWED_HOSTS.append(internal_ip)
 
 # ALLOWED_HOSTS = env.list(
 #     "DJANGO_ALLOWED_HOSTS",

@@ -20,6 +20,14 @@ class AccountAdapter(DefaultAccountAdapter):
     def is_open_for_signup(self, request: HttpRequest) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride]
         return getattr(settings, "ACCOUNT_ALLOW_REGISTRATION", True)
 
+    def send_confirmation_mail(self, request, emailconfirmation, signup):  # pyright: ignore[reportIncompatibleMethodOverride]
+        """Override to add logging for confirmation email sending."""
+        logger.info(
+            f"AccountAdapter.send_confirmation_mail called for "
+            f"email={emailconfirmation.email_address.email}, signup={signup}"
+        )
+        return super().send_confirmation_mail(request, emailconfirmation, signup)
+
     def send_mail(self, template_prefix, email, context):  # pyright: ignore[reportIncompatibleMethodOverride]
         """Override to add logging for email sending."""
         logger.info(

@@ -132,7 +132,7 @@ STORAGES = {
         "OPTIONS": {
             "location": "media",
             "file_overwrite": False,
-            "default_acl": "public-read",
+            "default_acl": None,
             "object_parameters": AWS_S3_OBJECT_PARAMETERS,
         },
     },

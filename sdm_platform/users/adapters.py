@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import typing
 
 from allauth.account.adapter import DefaultAccountAdapter
@@ -12,10 +13,26 @@ if typing.TYPE_CHECKING:
 
     from sdm_platform.users.models import User
 
+logger = logging.getLogger(__name__)
+
 
 class AccountAdapter(DefaultAccountAdapter):
     def is_open_for_signup(self, request: HttpRequest) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride]
         return getattr(settings, "ACCOUNT_ALLOW_REGISTRATION", True)
+
+    def send_mail(self, template_prefix, email, context):  # pyright: ignore[reportIncompatibleMethodOverride]
+        """Override to add logging for email sending."""
+        logger.info(
+            f"AccountAdapter.send_mail called: "
+            f"template_prefix={template_prefix}, email={email}"
+        )
+        try:
+            super().send_mail(template_prefix, email, context)
+        except Exception:
+            logger.exception(f"Failed to send email to {email}")
+            raise
+        else:
+            logger.info(f"Email sent successfully to {email}")
 
     def get_email_confirmation_url(
         self, request: HttpRequest, emailconfirmation

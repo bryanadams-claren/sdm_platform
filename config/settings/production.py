@@ -242,6 +242,17 @@ LOGGING = {
             "handlers": ["console"],
             "propagate": False,
         },
+        # Email logging
+        "django.core.mail": {
+            "level": "DEBUG",
+            "handlers": ["console"],
+            "propagate": False,
+        },
+        "allauth": {
+            "level": "DEBUG",
+            "handlers": ["console"],
+            "propagate": False,
+        },
     },
 }
 

@@ -217,10 +217,14 @@ class ConversationSummaryPDFGenerator:
         return content
 
     def _build_discussion_points_section(self) -> list:
-        """Build the key discussion points section."""
+        """Build a concise key discussion points section."""
         content = []
 
         content.append(Paragraph("KEY DISCUSSION POINTS", self.styles["SectionHeader"]))
+
+        # Limit to top 2 extracted points and 1 quote per topic for brevity
+        max_points = 2
+        max_quotes = 1
 
         for point_summary in self.data.point_summaries:
             # Only include points that were addressed
@@ -236,32 +240,25 @@ class ConversationSummaryPDFGenerator:
                         parent=self.styles["Normal"],
                         fontSize=12,
                         textColor=colors.HexColor("#1e3a8a"),
-                        spaceAfter=6,
-                        spaceBefore=10,
+                        spaceAfter=4,
+                        spaceBefore=8,
                         fontName="Helvetica-Bold",
                     ),
                 )
             )
 
-            # Extracted points
+            # Extracted points (limited)
             if point_summary.extracted_points:
-                content.append(
-                    Paragraph("<b>Key Points:</b>", self.styles["CustomBody"])
-                )
                 content.extend(
                     Paragraph(f"• {point}", self.styles["BulletPoint"])
-                    for point in point_summary.extracted_points
+                    for point in point_summary.extracted_points[:max_points]
                 )
 
-            # Quotes
+            # Single representative quote (if available)
             if point_summary.relevant_quotes:
-                content.append(Spacer(1, 0.1 * inch))
-                content.append(
-                    Paragraph("<b>In Their Words:</b>", self.styles["CustomBody"])
-                )
                 content.extend(
                     Paragraph(f'"{quote}"', self.styles["Quote"])
-                    for quote in point_summary.relevant_quotes
+                    for quote in point_summary.relevant_quotes[:max_quotes]
                 )
 
         return content
@@ -274,6 +271,9 @@ class ConversationSummaryPDFGenerator:
             return content
 
         opt = self.data.selected_option
+
+        # Limit benefits/drawbacks for brevity
+        max_items = 3
 
         content.append(
             Paragraph("PREFERRED TREATMENT APPROACH", self.styles["SectionHeader"])
@@ -298,7 +298,7 @@ class ConversationSummaryPDFGenerator:
             )
             content.extend(
                 Paragraph(f"• {benefit}", self.styles["BulletPoint"])
-                for benefit in opt.benefits
+                for benefit in opt.benefits[:max_items]
             )
 
         if opt.drawbacks:
@@ -308,7 +308,7 @@ class ConversationSummaryPDFGenerator:
             )
             content.extend(
                 Paragraph(f"• {drawback}", self.styles["BulletPoint"])
-                for drawback in opt.drawbacks
+                for drawback in opt.drawbacks[:max_items]
             )
 
         return content

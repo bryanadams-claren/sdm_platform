@@ -13,6 +13,7 @@ from sdm_platform.llmchat.utils.graphs import get_postgres_checkpointer
 from sdm_platform.users.models import User
 
 if TYPE_CHECKING:
+    from sdm_platform.journeys.models import JourneyResponse
     from sdm_platform.memory.models import ConversationSummary
 
 logger = logging.getLogger(__name__)
@@ -56,9 +57,9 @@ class Conversation(models.Model):
     model_name = models.CharField(max_length=100, default="gpt-4")  # which LLM used
 
     if TYPE_CHECKING:
-        # Reverse OneToOne relationship from ConversationSummary
-        # This helps type checkers understand conversation.summary is valid
+        # Reverse OneToOne relationships for type checkers
         summary: "ConversationSummary"
+        journey_response: "JourneyResponse"
 
     def __str__(self):
         return f"Conversation: {self.user.email} / {self.title} ({self.id})"

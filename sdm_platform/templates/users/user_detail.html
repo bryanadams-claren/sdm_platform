@@ -64,6 +64,14 @@
                     <i class="bi bi-shield-lock"></i> 2FA Security
                   </a>
                 </div>
+                {% if request.user.is_staff or request.user.is_superuser %}
+                  <div class="col-md-3">
+                    <a class="btn btn-outline-secondary w-100"
+                       href="{% url 'admin:index' %}">
+                      <i class="bi bi-gear"></i> Admin
+                    </a>
+                  </div>
+                {% endif %}
               </div>
             </div>
           </div>

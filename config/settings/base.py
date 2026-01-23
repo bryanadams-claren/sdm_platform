@@ -416,7 +416,7 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 DEFAULT_CONV_ID = "main_chat"
-AI_ASSISTANT_NAME = "AI Assistant"
+AI_ASSISTANT_NAME = "Claire"
 
 # LLM Graph Configuration
 # ------------------------------------------------------------------------------

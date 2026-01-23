@@ -387,7 +387,7 @@ class MemoryExtractionTaskTest(TestCase):
         call_args = mock_update.call_args
         self.assertEqual(call_args[1]["user_id"], self.user_id)
         self.assertEqual(call_args[1]["updates"]["name"], "Jane Doe")
-        self.assertEqual(call_args[1]["updates"]["birthday"], "1985-03-15")
+        self.assertEqual(call_args[1]["updates"]["birthday"], date(1985, 3, 15))
         self.assertEqual(call_args[1]["source"], "llm_extraction")
 
     @patch("sdm_platform.memory.tasks.UserProfileManager.update_profile")

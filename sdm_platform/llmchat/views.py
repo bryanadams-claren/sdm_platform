@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.http import Http404
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -14,6 +15,15 @@ from .utils.chat_history import get_chat_history
 from .utils.format import format_message
 from .utils.graphs import get_compiled_graph
 from .utils.graphs import get_postgres_checkpointer
+
+_CONVERSATION_NOT_FOUND = "Conversation not found"
+
+
+def _can_access_conversation(user, conv_id):
+    """Check if user can access the conversation (owner or admin)."""
+    if user.is_staff:
+        return True
+    return Conversation.objects.filter(user=user, conv_id=conv_id).exists()
 
 
 @login_required
@@ -32,6 +42,28 @@ def conversation(request, conv_id=None):
         except json.JSONDecodeError:
             return JsonResponse({"success": False, "error": "Invalid JSON"})
     else:
+        # For admins viewing a specific conversation, show that conversation
+        if conv_id and request.user.is_staff:
+            conv = Conversation.objects.filter(conv_id=conv_id).first()
+            if conv:
+                conversations = Conversation.objects.filter(user=conv.user).order_by(
+                    "-created_at",
+                )
+                return render(
+                    request,
+                    "llmchat/conversation.html",
+                    {
+                        "conversations": conversations,
+                        "active_conv_id": conv_id,
+                        "conversation_owner": conv.user,
+                    },
+                )
+            raise Http404(_CONVERSATION_NOT_FOUND)
+
+        # Check access for non-admin users viewing a specific conversation
+        if conv_id and not _can_access_conversation(request.user, conv_id):
+            raise Http404(_CONVERSATION_NOT_FOUND)
+
         conversations = Conversation.objects.filter(user=request.user).order_by(
             "-created_at",
         )
@@ -65,7 +97,18 @@ def _get_name(msg):
 
 @login_required
 def history(request, conv_id):
-    thread_id = f"chat_{request.user}_{conv_id}".replace("@", "_at_")
+    # Check access permissions
+    if not _can_access_conversation(request.user, conv_id):
+        raise Http404(_CONVERSATION_NOT_FOUND)
+
+    # For admins, get the thread_id from the actual conversation owner
+    if request.user.is_staff:
+        conv = Conversation.objects.filter(conv_id=conv_id).first()
+        if not conv:
+            raise Http404(_CONVERSATION_NOT_FOUND)
+        thread_id = conv.thread_id
+    else:
+        thread_id = f"chat_{request.user}_{conv_id}".replace("@", "_at_")
 
     config = RunnableConfig(configurable={"thread_id": thread_id})
     # you can also build a dict, like {"configurable": {"thread_id": thread_id}}

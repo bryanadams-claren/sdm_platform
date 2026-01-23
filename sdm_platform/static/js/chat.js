@@ -163,6 +163,9 @@ function disableChatInput(hint = "Connection closed. Please reconnect.") {
 function enableChatInput() {
   if (!chatInput) return;
 
+  // Don't enable input if viewing as admin (read-only mode)
+  if (window.isViewingAsAdmin) return;
+
   chatInput.disabled = false;
   chatInput.removeAttribute("aria-disabled");
   chatInput.placeholder = _savedPlaceholder ?? "";

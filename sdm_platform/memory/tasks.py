@@ -2,7 +2,9 @@
 
 import json
 import logging
+import re
 from datetime import UTC
+from datetime import date
 from datetime import datetime
 
 from celery import shared_task
@@ -20,6 +22,29 @@ logger = logging.getLogger(__name__)
 HIGH_CONFIDENCE = 0.8
 
 EXTRACTION_MODEL = "openai:gpt-4.1"
+
+
+def _parse_birthday(value: str | None) -> date | None:
+    """
+    Parse and validate a birthday string.
+
+    Returns a date object if valid, None otherwise.
+    Handles malformed dates like '----06-20' (missing year).
+    """
+    if not value or not isinstance(value, str):
+        return None
+
+    # Must match YYYY-MM-DD format with a valid year
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", value):
+        logger.warning("Invalid birthday format (not YYYY-MM-DD): %s", value)
+        return None
+
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        logger.warning("Invalid birthday value: %s", value)
+        return None
+
 
 EXTRACTION_PROMPT = """Analyze this conversation and extract any new information about
 the user.  Only extract information that the user has explicitly stated about
@@ -85,6 +110,15 @@ def extract_user_profile_memory(user_id: str, messages_json: list[dict]):
         if extracted and isinstance(extracted, dict):
             # Filter out None values and empty strings
             updates = {k: v for k, v in extracted.items() if v}
+
+            # Validate birthday if present
+            if "birthday" in updates:
+                parsed_birthday = _parse_birthday(updates["birthday"])
+                if parsed_birthday:
+                    updates["birthday"] = parsed_birthday
+                else:
+                    # Remove invalid birthday from updates
+                    del updates["birthday"]
 
             if updates:
                 UserProfileManager.update_profile(

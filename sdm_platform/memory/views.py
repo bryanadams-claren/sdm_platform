@@ -6,6 +6,7 @@ from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse
+from django.http import Http404
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -17,6 +18,32 @@ from sdm_platform.memory.managers import ConversationPointManager
 from sdm_platform.memory.models import ConversationSummary
 
 logger = logging.getLogger(__name__)
+
+_CONVERSATION_NOT_FOUND = "Conversation not found"
+
+
+def _get_conversation_for_user(user, conv_id, select_related=None):
+    """
+    Get a conversation, allowing staff to access any conversation.
+
+    Returns the conversation and the actual owner's user object.
+    """
+    if user.is_staff:
+        qs = Conversation.objects.all()
+        if select_related:
+            qs = qs.select_related(*select_related)
+        conv = qs.filter(conv_id=conv_id).first()
+        if not conv:
+            raise Http404(_CONVERSATION_NOT_FOUND)
+        return conv, conv.user
+
+    qs = Conversation.objects.all()
+    if select_related:
+        qs = qs.select_related(*select_related)
+    conv = qs.filter(conv_id=conv_id, user=user).first()
+    if not conv:
+        raise Http404(_CONVERSATION_NOT_FOUND)
+    return conv, user
 
 
 @login_required
@@ -52,12 +79,8 @@ def conversation_points_api(request, conv_id):
         }
     """
     try:
-        # Get the conversation for this user
-        conversation = get_object_or_404(
-            Conversation,
-            conv_id=conv_id,
-            user=request.user,
-        )
+        # Get the conversation (staff can view any conversation)
+        conversation, owner = _get_conversation_for_user(request.user, conv_id)
 
         # Check if conversation has a journey
         if not conversation.journey:
@@ -78,7 +101,7 @@ def conversation_points_api(request, conv_id):
 
         # Build response with completion status from memory store
         points_data = []
-        user_id = request.user.email
+        user_id = owner.email
 
         for point in conversation_points:
             # Get memory from LangGraph store
@@ -154,11 +177,9 @@ def initiate_conversation_point(request, conv_id, point_slug):
         return JsonResponse({"success": False, "error": "POST required"}, status=405)
 
     try:
-        # Get the conversation
-        conversation = get_object_or_404(
-            Conversation.objects.select_related("journey"),
-            conv_id=conv_id,
-            user=request.user,
+        # Get the conversation (staff can access any conversation)
+        conversation, owner = _get_conversation_for_user(
+            request.user, conv_id, select_related=["journey"]
         )
 
         if not conversation.journey:
@@ -179,7 +200,7 @@ def initiate_conversation_point(request, conv_id, point_slug):
 
         # Mark as initiated in memory (optional - for tracking)
         ConversationPointManager.update_point_memory(
-            user_id=request.user.email,
+            user_id=owner.email,
             journey_slug=conversation.journey.slug,
             point_slug=point_slug,
             updates={
@@ -189,7 +210,7 @@ def initiate_conversation_point(request, conv_id, point_slug):
         )
 
         # Send AI-initiated message via Celery task
-        thread_id = format_thread_id(request.user.email, conv_id)
+        thread_id = format_thread_id(owner.email, conv_id)
         send_ai_initiated_message.delay(  # pyright: ignore[reportCallIssue]
             thread_id,
             request.user.email,
@@ -231,11 +252,7 @@ def conversation_summary_status(request, conv_id):
             # if ready
         }
     """
-    conversation = get_object_or_404(
-        Conversation,
-        conv_id=conv_id,
-        user=request.user,
-    )
+    conversation, _owner = _get_conversation_for_user(request.user, conv_id)
 
     try:
         summary = conversation.summary
@@ -268,11 +285,7 @@ def download_conversation_summary(request, conv_id):
     Returns:
         FileResponse with PDF file
     """
-    conversation = get_object_or_404(
-        Conversation,
-        conv_id=conv_id,
-        user=request.user,
-    )
+    conversation, _owner = _get_conversation_for_user(request.user, conv_id)
 
     try:
         summary = conversation.summary

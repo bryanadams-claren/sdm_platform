@@ -53,6 +53,12 @@ def get_postgres_checkpointer():
     return PostgresSaver.from_conn_string(env.str("DATABASE_URL"))
 
 
+GLOBAL_INSTRUCTIONS = (
+    "Do not share external video links (e.g., YouTube) as sources may be "
+    "unreliable or broken. Focus on text-based explanations and retrieved evidence."
+)
+
+
 def _build_system_message_and_continue(
     msgs: list,
     user_context: str,
@@ -73,7 +79,7 @@ def _build_system_message_and_continue(
     Returns:
         State dict with augmented messages
     """
-    system_content_parts = []
+    system_content_parts = [GLOBAL_INSTRUCTIONS]
 
     # Add conversation context (journey info)
     if system_prompt:

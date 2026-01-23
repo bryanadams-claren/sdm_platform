@@ -42,9 +42,40 @@ function formatTime(isoString = null) {
  * Configure marked for safe rendering
  */
 if (typeof marked !== "undefined") {
+  // Custom renderer to make all links open in new tab
+  const renderer = {
+    link(href, title, text) {
+      const titleAttr = title ? ` title="${title}"` : "";
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer"${titleAttr}>${text}</a>`;
+    },
+  };
+
   marked.use({
     breaks: true, // Convert \n to <br>
     gfm: true, // GitHub Flavored Markdown
+    renderer: renderer,
+  });
+}
+
+/**
+ * Auto-link plain URLs (http/https) that aren't already in markdown link syntax.
+ * This runs before markdown parsing.
+ */
+function autoLinkUrls(text) {
+  // Match URLs not already inside markdown link syntax [text](url) or HTML <a> tags
+  // Negative lookbehind for ]( and href="
+  const urlRegex = /(?<!\]\(|href="|href=')https?:\/\/[^\s<>\[\]"']+/g;
+  return text.replace(urlRegex, (url) => {
+    // Clean up trailing punctuation that's likely not part of the URL
+    let cleanUrl = url;
+    const trailingPunct = /[.,;:!?)]+$/;
+    const match = cleanUrl.match(trailingPunct);
+    let suffix = "";
+    if (match) {
+      suffix = match[0];
+      cleanUrl = cleanUrl.slice(0, -suffix.length);
+    }
+    return `<${cleanUrl}>${suffix}`;
   });
 }
 
@@ -53,9 +84,12 @@ if (typeof marked !== "undefined") {
  * Returns an HTML string (safe to use with innerHTML after DOMPurify or trusted content).
  */
 function renderMarkdownWithCitations(text, citations = []) {
-  // First, replace citation markers [N] with placeholder links
+  // First, auto-link plain URLs
+  let processedText = autoLinkUrls(text);
+
+  // Then, replace citation markers [N] with placeholder links
   // We'll use a data attribute to identify them for styling
-  let processedText = text.replace(/\[(\d+)\]/g, (match, num) => {
+  processedText = processedText.replace(/\[(\d+)\]/g, (match, num) => {
     const idx = Number(num);
     const citation = (citations || []).find((c) => Number(c.index) === idx);
 

@@ -74,20 +74,38 @@ class Journey(models.Model):
     def build_system_prompt(self, responses_dict):
         """
         Build a system prompt by interpolating user responses into the template.
+
+        Converts raw response values (e.g., "less_than_6_weeks") to their
+        human-readable labels (e.g., "Less than 6 weeks") for better LLM comprehension.
         """
         if not self.system_prompt_template:
             return ""
 
-        # Format multi-select responses as comma-separated strings
+        # Build a lookup of question_id -> {value -> label}
+        label_lookup = {}
+        for question in self.onboarding_questions:
+            question_id = question.get("id")
+            if question_id and "options" in question:
+                label_lookup[question_id] = {
+                    opt["value"]: opt.get("label", opt["value"])
+                    for opt in question["options"]
+                    if "value" in opt
+                }
+
+        # Format responses using labels instead of raw values
         formatted_responses = {}
         for key, value in responses_dict.items():
+            question_labels = label_lookup.get(key, {})
             if isinstance(value, list):
-                formatted_responses[key] = ", ".join(value)
+                # Multi-select: convert each value to its label
+                labels = [question_labels.get(v, v) for v in value]
+                formatted_responses[key] = ", ".join(labels)
             else:
-                formatted_responses[key] = value
+                # Single select: convert value to its label
+                formatted_responses[key] = question_labels.get(value, value)
 
         try:
-            return self.system_prompt_template.format(**responses_dict)
+            return self.system_prompt_template.format(**formatted_responses)
         except KeyError:
             # Fallback if template has placeholders not in responses
             return self.system_prompt_template

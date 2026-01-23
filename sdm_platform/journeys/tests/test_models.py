@@ -104,6 +104,74 @@ class JourneyModelTest(TestCase):
         result = self.journey.build_system_prompt(responses)
         self.assertEqual(result, "")
 
+    def test_build_system_prompt_converts_values_to_labels(self):
+        """Test that build_system_prompt converts raw values to human-readable labels"""
+        # Set up journey with value/label options (like real fixture data)
+        self.journey.onboarding_questions = [
+            {
+                "id": "duration",
+                "type": "choice",
+                "text": "How long have you had this condition?",
+                "options": [
+                    {"value": "less_than_6_weeks", "label": "Less than 6 weeks"},
+                    {"value": "6_weeks_to_3_months", "label": "6 weeks to 3 months"},
+                    {"value": "more_than_3_months", "label": "More than 3 months"},
+                ],
+            },
+            {
+                "id": "pain_level",
+                "type": "choice",
+                "text": "How would you rate your symptoms?",
+                "options": [
+                    {"value": "mild", "label": "Mild (1-3)"},
+                    {"value": "moderate", "label": "Moderate (4-6)"},
+                    {"value": "severe", "label": "Severe (7-10)"},
+                ],
+            },
+        ]
+        self.journey.save()
+
+        # Pass raw values (as stored in JourneyResponse)
+        responses = {
+            "duration": "less_than_6_weeks",
+            "pain_level": "moderate",
+        }
+
+        result = self.journey.build_system_prompt(responses)
+
+        # Should use labels, not raw values
+        expected = (
+            "The patient has had test condition for Less than 6 weeks with "
+            "Moderate (4-6) severity."
+        )
+        self.assertEqual(result, expected)
+
+    def test_build_system_prompt_converts_multiselect_values_to_labels(self):
+        """Test that multi-select responses are converted to labels"""
+        self.journey.system_prompt_template = "Treatments tried: {treatments_tried}."
+        self.journey.onboarding_questions = [
+            {
+                "id": "treatments_tried",
+                "type": "multiple",
+                "text": "What treatments have you tried?",
+                "options": [
+                    {"value": "otc_meds", "label": "Over-the-counter medication"},
+                    {"value": "physical_therapy", "label": "Physical therapy"},
+                    {"value": "rest", "label": "Rest and activity modification"},
+                ],
+            },
+        ]
+        self.journey.save()
+
+        responses = {
+            "treatments_tried": ["otc_meds", "physical_therapy"],
+        }
+
+        result = self.journey.build_system_prompt(responses)
+
+        expected = "Treatments tried: Over-the-counter medication, Physical therapy."
+        self.assertEqual(result, expected)
+
 
 class JourneyOptionModelTest(TestCase):
     """Test the JourneyOption model"""

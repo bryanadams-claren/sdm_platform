@@ -301,3 +301,60 @@ def download_conversation_summary(request, conv_id):
         f'attachment; filename="conversation_summary_{conv_id}.pdf"'
     )
     return response
+
+
+@login_required
+def generate_summary_now(request, conv_id):
+    """
+    Manually trigger PDF summary generation.
+
+    Allows users to generate a summary on-demand, even if not all conversation
+    points have been addressed. Deletes any existing summary to allow regeneration.
+
+    Args:
+        request: Django request object
+        conv_id: Conversation ID
+
+    Returns:
+        JsonResponse indicating success/failure
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "POST required"}, status=405)
+
+    try:
+        conversation, _owner = _get_conversation_for_user(request.user, conv_id)
+
+        if not conversation.journey:
+            return JsonResponse(
+                {"success": False, "error": "No journey associated with conversation"},
+                status=400,
+            )
+
+        # Delete existing summary if present (enables regeneration)
+        try:
+            existing_summary = conversation.summary
+            existing_summary.file.delete(save=False)
+            existing_summary.delete()
+            logger.info("Deleted existing summary for conversation %s", conv_id)
+        except ConversationSummary.DoesNotExist:
+            pass
+
+        # Trigger async PDF generation
+        from sdm_platform.memory.tasks import (  # noqa: PLC0415
+            generate_conversation_summary_pdf,
+        )
+
+        generate_conversation_summary_pdf.delay(conversation.conv_id)  # pyright: ignore[reportCallIssue]
+
+        logger.info("Triggered manual summary generation for conversation %s", conv_id)
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "Summary generation started",
+            }
+        )
+
+    except Exception as e:
+        logger.exception("Error triggering summary generation for conv_id=%s", conv_id)
+        return JsonResponse({"success": False, "error": str(e)}, status=500)

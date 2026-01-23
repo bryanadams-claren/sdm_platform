@@ -373,7 +373,7 @@ footer {
   font-style: italic;
 }
 
-/* Sidebar action buttons (Guide Me, Download Summary) - consistent sizing */
+/* Sidebar action buttons (Guide Me, Download Summary, Summarize Now) - consistent sizing */
 .sidebar-action-btn {
   font-weight: 500;
   width: calc(100% - 16px);
@@ -386,9 +386,20 @@ footer {
   justify-content: center;
 }
 
-.sidebar-action-btn:hover {
+.sidebar-action-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Disabled state for Summarize Now button (generating or cooldown) */
+.summarize-btn-disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.summarize-btn-disabled:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 /* Extraction indicator */

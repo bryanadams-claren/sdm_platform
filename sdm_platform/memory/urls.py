@@ -26,4 +26,9 @@ urlpatterns = [
         views.download_conversation_summary,
         name="download_summary",
     ),
+    path(
+        "conversation/<str:conv_id>/summary/generate/",
+        views.generate_summary_now,
+        name="generate_summary",
+    ),
 ]

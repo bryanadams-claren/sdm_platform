@@ -494,9 +494,10 @@ def extract_all_memories(
 @shared_task(bind=True, soft_time_limit=300, time_limit=600, max_retries=2)
 def generate_conversation_summary_pdf(self, conversation_id: str) -> str:
     """
-    Generate PDF summary for a completed conversation.
+    Generate PDF summary for a conversation.
 
-    Called automatically when all conversation points are addressed.
+    Called automatically when all conversation points are addressed,
+    or manually via the "Summarize Now" button.
 
     Args:
         conversation_id: Conversation conv_id
@@ -521,12 +522,19 @@ def generate_conversation_summary_pdf(self, conversation_id: str) -> str:
     try:
         conversation = Conversation.objects.get(conv_id=conversation_id)
 
-        # Check if summary already exists
+        # Check if summary already exists (manual generation deletes first)
         if hasattr(conversation, "summary"):
             logger.info(
-                "Summary already exists for conversation %s",
+                "Summary already exists for conversation %s, skipping",
                 conversation_id,
             )
+            # Still notify frontend in case they're waiting
+            if conversation.thread_id:
+                from sdm_platform.llmchat.utils.status import (  # noqa: PLC0415
+                    send_summary_complete,
+                )
+
+                send_summary_complete(conversation.thread_id)
             return str(conversation.summary.id)
 
         # Gather data

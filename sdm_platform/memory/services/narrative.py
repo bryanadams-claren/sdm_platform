@@ -24,6 +24,10 @@ Focus on synthesizing the 3-4 most important themes:
 
 Do NOT enumerate every point discussed. Synthesize and prioritize. Be concise.
 
+IMPORTANT: Some topics may not have been discussed yet. If a topic has no information,
+do NOT mention it or say it wasn't discussed - simply focus on the topics that WERE
+discussed. Only include information that was actually covered in the conversation.
+
 Write in third person using the patient's first name ("{first_name} mentioned...",
 "{his_her} goals include...") to make it appropriate for sharing with healthcare
 providers.
@@ -40,7 +44,8 @@ Background:
 
 Write a warm, clear summary in 400-600 words (about 1 page) that helps this patient
 articulate their values and goals to their healthcare provider. Format it as 3-4
-flowing paragraphs. Be specific but concise.
+flowing paragraphs. Be specific but concise. If very few topics were discussed,
+it's okay to write a shorter summary (200-300 words).
 """
 
 

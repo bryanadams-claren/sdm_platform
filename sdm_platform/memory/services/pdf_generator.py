@@ -226,12 +226,23 @@ class ConversationSummaryPDFGenerator:
         max_points = 2
         max_quotes = 1
 
-        for point_summary in self.data.point_summaries:
-            # Only include points that were addressed
-            if not point_summary.extracted_points and not point_summary.relevant_quotes:
-                continue
+        # Check if any points were discussed
+        has_any_discussed = any(
+            ps.extracted_points or ps.relevant_quotes
+            for ps in self.data.point_summaries
+        )
 
-            # Point title
+        if not has_any_discussed:
+            content.append(
+                Paragraph(
+                    "<i>No topics have been discussed in detail yet.</i>",
+                    self.styles["CustomBody"],
+                )
+            )
+            return content
+
+        for point_summary in self.data.point_summaries:
+            # Point title - always show
             content.append(
                 Paragraph(
                     f"<b>{point_summary.title}</b>",
@@ -246,6 +257,16 @@ class ConversationSummaryPDFGenerator:
                     ),
                 )
             )
+
+            # Check if this point was addressed
+            if not point_summary.extracted_points and not point_summary.relevant_quotes:
+                content.append(
+                    Paragraph(
+                        "<i>This topic was not discussed.</i>",
+                        self.styles["CustomBody"],
+                    )
+                )
+                continue
 
             # Extracted points (limited)
             if point_summary.extracted_points:

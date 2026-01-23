@@ -152,12 +152,11 @@ The following remain intentionally unresolved:
 
 ---
 
-## 11. Change Log (Optional)
+## 11. Change Log
 
 Use this section to track material updates to the summary system itself.
 
-- YYYY-MM-DD — Description of change
-- YYYY-MM-DD — Description of change
+- 2026-01-23 — Added "Summarize Now" on-demand PDF generation feature (see Section 13)
 
 ---
 
@@ -170,6 +169,55 @@ Possible extensions of this system include:
 - Tooling for diffing summary versions
 - Evaluation metrics for summary quality
 - Integration with memory pruning logic
+
+---
+
+## 13. "Summarize Now" Feature (2026-01-23)
+
+### 13.1 Overview
+
+Users can now generate a PDF summary on-demand at any point during a conversation, rather than waiting for all conversation points to be addressed. This allows patients to capture partial progress and share it with healthcare providers even if the full SDM journey is incomplete.
+
+### 13.2 Key Behaviors
+
+- **On-demand generation**: Users click "Summarize Now" button in the conversation sidebar
+- **Regeneration**: Always creates a fresh summary (deletes existing summary if present)
+- **Partial summaries**: Generates even if not all conversation points are addressed
+  - Topics not discussed show "This topic was not discussed" in the PDF
+  - LLM narrative focuses only on topics that were actually covered
+- **Auto-download**: PDF downloads automatically when generation completes
+- **10-minute cooldown**: Per-conversation cooldown prevents abuse; persists via localStorage
+
+### 13.3 Technical Implementation
+
+**Backend:**
+- `memory/views.py`: `generate_summary_now()` - POST endpoint that deletes existing summary and triggers async generation
+- `memory/urls.py`: Route at `/memory/conversation/{conv_id}/summary/generate/`
+- `memory/tasks.py`: `generate_conversation_summary_pdf` task (unchanged, but now called for partial summaries)
+- `memory/services/narrative.py`: Updated LLM prompt to handle missing topics gracefully
+- `memory/services/pdf_generator.py`: Shows "not discussed" for empty conversation points
+
+**Frontend:**
+- `static/js/conversationpoints.js`:
+  - "Summarize Now" button with three states (default, generating, cooldown)
+  - Cooldown stored in localStorage as `summaryCooldown_{convId}`
+  - Listens for `summary_complete` WebSocket event to trigger auto-download
+- `static/css/project.css`: Disabled button styling
+
+### 13.4 Button States
+
+| State | Appearance | Behavior |
+|-------|------------|----------|
+| Default | "Summarize Now" with document icon | Clickable |
+| Generating | Spinner + "Generating..." (gray) | Disabled |
+| Cooldown | Clock icon + "Available in M:SS" (gray) | Disabled, live countdown |
+
+### 13.5 Design Decisions
+
+- **Cooldown is per-conversation**: Users can immediately summarize a different conversation
+- **Guide Me button always visible**: Remains available even after summary generation
+- **No server-side cooldown enforcement**: Cooldown is UX-only via localStorage (acceptable for this use case)
+- **WebSocket integration**: Reuses existing `summary_complete` event for notification
 
 ---
 

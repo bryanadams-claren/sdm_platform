@@ -12,6 +12,11 @@ let summaryReady = false;
 let summaryDownloadUrl = null;
 let isExtracting = false;
 let statusUnsubscribe = null;
+let isGeneratingSummary = false;
+let cooldownInterval = null;
+
+// Cooldown duration in milliseconds (10 minutes)
+const COOLDOWN_DURATION_MS = 10 * 60 * 1000;
 
 /**
  * Fetch conversation points from the API
@@ -63,17 +68,26 @@ function renderConversationPoints(points, journeyTitle) {
     `;
   chatList.appendChild(header);
 
-  // Add Guide Me button (hidden if summary is already ready)
+  // Add Guide Me button (always visible)
   const guideBtn = document.createElement("button");
   guideBtn.id = "guideMeBtn";
   guideBtn.className = "btn btn-primary btn-sm sidebar-action-btn";
   guideBtn.innerHTML = '<i class="bi bi-compass me-1"></i> Guide Me';
   guideBtn.addEventListener("click", handleGuideMeClick);
-  // Hide Guide Me if summary is already available
-  if (summaryDownloadUrl) {
-    guideBtn.style.display = "none";
-  }
   header.appendChild(guideBtn);
+
+  // Add Summarize Now button
+  const summarizeBtn = document.createElement("button");
+  summarizeBtn.id = "summarizeNowBtn";
+  summarizeBtn.className =
+    "btn btn-outline-secondary btn-sm sidebar-action-btn";
+  summarizeBtn.innerHTML =
+    '<i class="bi bi-file-earmark-text me-1"></i> Summarize Now';
+  summarizeBtn.addEventListener("click", handleSummarizeNowClick);
+  header.appendChild(summarizeBtn);
+
+  // Update summarize button state (handles cooldown/generating states)
+  updateSummarizeButtonState();
 
   // Add extraction status indicator (hidden by default)
   const extractionIndicator = document.createElement("div");
@@ -345,6 +359,7 @@ function showAIThinkingIndicator(pointTitle) {
 /**
  * Check if conversation summary PDF is ready for download
  * @param {string} convId - The conversation ID
+ * @returns {Promise<void>}
  */
 async function checkSummaryStatus(convId) {
   try {
@@ -357,7 +372,7 @@ async function checkSummaryStatus(convId) {
     }
     const data = await response.json();
 
-    if (data.ready && !summaryReady) {
+    if (data.ready) {
       summaryReady = true;
       summaryDownloadUrl = data.download_url;
       showDownloadButton(data.download_url);
@@ -368,7 +383,7 @@ async function checkSummaryStatus(convId) {
 }
 
 /**
- * Display the download summary button in the header and hide Guide Me button
+ * Display the download summary button in the header
  * @param {string} downloadUrl - URL to download the PDF
  */
 function showDownloadButton(downloadUrl) {
@@ -381,12 +396,6 @@ function showDownloadButton(downloadUrl) {
 
   if (document.getElementById("downloadSummaryBtn")) {
     return;
-  }
-
-  // Hide the Guide Me button when Download Summary is shown
-  const guideBtn = document.getElementById("guideMeBtn");
-  if (guideBtn) {
-    guideBtn.style.display = "none";
   }
 
   const btn = document.createElement("a");
@@ -474,7 +483,12 @@ function handleStatusChange(status) {
     // Refresh to show the download button
     if (window.activeConvId) {
       loadConversationPoints(window.activeConvId);
-      checkSummaryStatus(window.activeConvId);
+      checkSummaryStatus(window.activeConvId).then(() => {
+        // Handle auto-download and cooldown if this was a manual generation
+        if (summaryDownloadUrl) {
+          handleSummaryComplete(summaryDownloadUrl);
+        }
+      });
     }
   }
 }
@@ -506,6 +520,192 @@ function unsubscribeFromStatusEvents() {
     statusUnsubscribe = null;
     console.log("[ConversationPoints] Unsubscribed from status events");
   }
+}
+
+/**
+ * Handle clicking the "Summarize Now" button
+ */
+function handleSummarizeNowClick() {
+  const convId = window.activeConvId;
+  if (!convId) {
+    console.error("No active conversation ID");
+    alert("No active conversation. Please select a conversation first.");
+    return;
+  }
+
+  // Check cooldown
+  if (isCooldownActive(convId)) {
+    console.log("[SummarizeNow] Cooldown still active, ignoring click");
+    return;
+  }
+
+  // Get CSRF token
+  const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]")?.value;
+  if (!csrfToken) {
+    console.error("CSRF token not found");
+    alert("Unable to generate summary: page configuration error.");
+    return;
+  }
+
+  // Set generating state
+  isGeneratingSummary = true;
+  updateSummarizeButtonState();
+
+  // Call the API
+  fetch(`/memory/conversation/${convId}/summary/generate/`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrfToken,
+    },
+    body: JSON.stringify({}),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        console.log("[SummarizeNow] Summary generation started");
+        // Keep button in generating state - will be updated when summary_complete arrives
+      } else {
+        console.error("[SummarizeNow] Failed:", data.error);
+        alert("Failed to generate summary: " + data.error);
+        isGeneratingSummary = false;
+        updateSummarizeButtonState();
+      }
+    })
+    .catch((error) => {
+      console.error("[SummarizeNow] Error:", error);
+      alert("Error generating summary. Please try again.");
+      isGeneratingSummary = false;
+      updateSummarizeButtonState();
+    });
+}
+
+/**
+ * Check if cooldown is active for a conversation
+ * @param {string} convId - The conversation ID
+ * @returns {boolean} True if cooldown is active
+ */
+function isCooldownActive(convId) {
+  const cooldownEnd = localStorage.getItem(`summaryCooldown_${convId}`);
+  if (!cooldownEnd) return false;
+  return new Date(cooldownEnd) > new Date();
+}
+
+/**
+ * Get remaining cooldown time in milliseconds
+ * @param {string} convId - The conversation ID
+ * @returns {number} Remaining time in ms, or 0 if no cooldown
+ */
+function getCooldownRemaining(convId) {
+  const cooldownEnd = localStorage.getItem(`summaryCooldown_${convId}`);
+  if (!cooldownEnd) return 0;
+  const remaining = new Date(cooldownEnd) - new Date();
+  return Math.max(0, remaining);
+}
+
+/**
+ * Set cooldown for a conversation
+ * @param {string} convId - The conversation ID
+ */
+function setCooldown(convId) {
+  const cooldownEnd = new Date(Date.now() + COOLDOWN_DURATION_MS);
+  localStorage.setItem(`summaryCooldown_${convId}`, cooldownEnd.toISOString());
+  console.log(
+    `[SummarizeNow] Cooldown set for ${convId} until ${cooldownEnd.toISOString()}`,
+  );
+}
+
+/**
+ * Format milliseconds as MM:SS
+ * @param {number} ms - Milliseconds
+ * @returns {string} Formatted time string
+ */
+function formatCooldownTime(ms) {
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+/**
+ * Update the Summarize Now button state based on current conditions
+ */
+function updateSummarizeButtonState() {
+  const btn = document.getElementById("summarizeNowBtn");
+  if (!btn) return;
+
+  const convId = window.activeConvId;
+
+  // Clear any existing cooldown interval
+  if (cooldownInterval) {
+    clearInterval(cooldownInterval);
+    cooldownInterval = null;
+  }
+
+  if (isGeneratingSummary) {
+    // Generating state
+    btn.disabled = true;
+    btn.className =
+      "btn btn-secondary btn-sm sidebar-action-btn summarize-btn-disabled";
+    btn.innerHTML =
+      '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Generating...';
+  } else if (convId && isCooldownActive(convId)) {
+    // Cooldown state
+    btn.disabled = true;
+    btn.className =
+      "btn btn-secondary btn-sm sidebar-action-btn summarize-btn-disabled";
+
+    // Update countdown display
+    const updateCountdown = () => {
+      const remaining = getCooldownRemaining(convId);
+      if (remaining <= 0) {
+        // Cooldown expired
+        if (cooldownInterval) {
+          clearInterval(cooldownInterval);
+          cooldownInterval = null;
+        }
+        updateSummarizeButtonState(); // Recurse to show normal state
+      } else {
+        btn.innerHTML = `<i class="bi bi-clock me-1"></i> Available in ${formatCooldownTime(remaining)}`;
+      }
+    };
+
+    updateCountdown();
+    cooldownInterval = setInterval(updateCountdown, 1000);
+  } else {
+    // Normal state
+    btn.disabled = false;
+    btn.className = "btn btn-outline-secondary btn-sm sidebar-action-btn";
+    btn.innerHTML =
+      '<i class="bi bi-file-earmark-text me-1"></i> Summarize Now';
+  }
+}
+
+/**
+ * Handle summary completion - auto-download and set cooldown
+ * @param {string} downloadUrl - URL to download the PDF
+ */
+function handleSummaryComplete(downloadUrl) {
+  const convId = window.activeConvId;
+
+  // If we triggered this generation, auto-download
+  if (isGeneratingSummary && downloadUrl) {
+    console.log("[SummarizeNow] Auto-downloading summary PDF");
+    // Trigger download
+    window.location.href = downloadUrl;
+  }
+
+  // Reset generating state
+  isGeneratingSummary = false;
+
+  // Set cooldown for this conversation
+  if (convId) {
+    setCooldown(convId);
+  }
+
+  // Update button state
+  updateSummarizeButtonState();
 }
 
 // Export for use in other scripts

@@ -38,71 +38,55 @@ function formatTime(isoString = null) {
   }
 }
 
-function linkifyCitationsWithBreaks(text, citations = []) {
-  const frag = document.createDocumentFragment();
-  const re = /\[(\d+)\]/g;
-  let lastIndex = 0;
-  let match;
+/**
+ * Configure marked for safe rendering
+ */
+if (typeof marked !== "undefined") {
+  marked.use({
+    breaks: true, // Convert \n to <br>
+    gfm: true, // GitHub Flavored Markdown
+  });
+}
 
-  const appendWithBreaks = (target, s) => {
-    const parts = String(s ?? "").split(/\r?\n/);
-    parts.forEach((part, i) => {
-      target.appendChild(document.createTextNode(part));
-      if (i < parts.length - 1)
-        target.appendChild(document.createElement("br"));
-    });
-  };
-
-  while ((match = re.exec(text)) !== null) {
-    const matchStart = match.index;
-    const matchEnd = re.lastIndex;
-
-    // Preceding text
-    if (matchStart > lastIndex) {
-      appendWithBreaks(frag, text.slice(lastIndex, matchStart));
-      // const plain = text.slice(lastIndex, matchStart);
-      // frag.appendChild(document.createTextNode(plain));
-    }
-
-    const idx = Number(match[1]);
-    // Find matching citation by index (numeric)
+/**
+ * Render markdown text and linkify citations.
+ * Returns an HTML string (safe to use with innerHTML after DOMPurify or trusted content).
+ */
+function renderMarkdownWithCitations(text, citations = []) {
+  // First, replace citation markers [N] with placeholder links
+  // We'll use a data attribute to identify them for styling
+  let processedText = text.replace(/\[(\d+)\]/g, (match, num) => {
+    const idx = Number(num);
     const citation = (citations || []).find((c) => Number(c.index) === idx);
 
     if (citation) {
-      const a = document.createElement("a");
-      a.className = "citation-link";
-      // keep href exactly as provided (relative or absolute) — setAttribute to avoid normalization surprises
-      a.setAttribute("href", citation.url || "#");
-      a.setAttribute("target", "_blank");
-      a.setAttribute("rel", "noopener noreferrer");
-      a.textContent = `[${match[1]}]`;
-
-      // helpful metadata in title attribute (excerpt or title)
-      if (citation.title) a.title = citation.title;
-      else if (citation.excerpt)
-        a.title = citation.excerpt.replace(/\s+/g, " ").trim().slice(0, 300);
-
-      // data attributes for potential click handlers later
-      if (citation.doc_id) a.dataset.docId = citation.doc_id;
-      a.dataset.citationIndex = citation.index;
-
-      frag.appendChild(a);
-    } else {
-      // no matching citation — keep the literal text
-      // frag.appendChild(document.createTextNode(match[0]));
-      appendWithBreaks(frag, match[0]);
+      const url = citation.url || "#";
+      const title = citation.title
+        ? citation.title.replace(/"/g, "&quot;")
+        : citation.excerpt
+          ? citation.excerpt
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 300)
+              .replace(/"/g, "&quot;")
+          : "";
+      const docId = citation.doc_id ? ` data-doc-id="${citation.doc_id}"` : "";
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="citation-link" title="${title}"${docId} data-citation-index="${idx}">[${num}]</a>`;
     }
+    return match; // Keep as-is if no matching citation
+  });
 
-    lastIndex = matchEnd;
+  // Parse markdown to HTML
+  if (typeof marked !== "undefined") {
+    return marked.parse(processedText);
   }
 
-  // Trailing text
-  if (lastIndex < text.length) {
-    // frag.appendChild(document.createTextNode(text.slice(lastIndex)));
-    appendWithBreaks(frag, text.slice(lastIndex));
-  }
-
-  return frag;
+  // Fallback if marked isn't loaded: basic newline handling
+  return processedText
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>");
 }
 
 /** Show typing indicator while waiting for message to return */
@@ -325,11 +309,11 @@ function appendMessage(
   // }
 
   const bubble = document.createElement("div");
-  bubble.className = "msg-text";
+  bubble.className = "msg-text markdown-content";
 
-  // message body: use linkify helper to safely insert anchor nodes for citations
-  const contentFrag = linkifyCitationsWithBreaks(text, citations);
-  bubble.appendChild(contentFrag);
+  // message body: render markdown and linkify citations
+  const renderedHtml = renderMarkdownWithCitations(text, citations);
+  bubble.innerHTML = renderedHtml;
 
   // Add timestamp if provided
   const timeSpan = document.createElement("span");

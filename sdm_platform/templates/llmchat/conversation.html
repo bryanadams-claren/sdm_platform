@@ -125,6 +125,7 @@
   </div>
 {% endblock body %}
 {% block user_javascript %}
+  <script src="{% static 'vendor/marked/marked.min.js' %}"></script>
   {% compress js %}
     <script defer src="{% static 'js/websocket-base.js' %}"></script>
     <script defer src="{% static 'js/chat-websocket.js' %}"></script>

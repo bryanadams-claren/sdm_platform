@@ -1,12 +1,17 @@
    # Project-Specific Instructions for Claude Code
 
+   ## Preferences
+   - Bryan is the name of the guy doing this, use his name when addressing him
+   - The local environment is Windows, so please use powershell instead of bash
+   - When implementing new features, please do test and make sure they work, but don't check them into git or push to production.
+   - Always use `uv run` to execute Python commands (e.g., `uv run python`, `uv run pytest`)
+
    ## Django-Specific
    - This is a Django project, started using Django Cookiecutter, using django-allauth for authentication, celery for background tasks, and django-celery-beat for scheduling tasks (and Redis as the broker)
    - Imports inside Celery tasks are intentional (circular import avoidance)
    - The database is PostgreSQL, and the project uses django-environ for environment variable management (with local environment variables in `.envs\.local`)
    - The production environment is AWS with Elastic Beanstalk for deploying the web (see `.elasticbeanstalk` and `.ebextensions` for web and worker configurations), with RDS for the database, SES for email, and S3 for file storage
    - The EB environment only deploys from git, so code changes must be committed to git before deploying to EB
-   - The local environment is Windows, so please use powershell instead of bash
 
    ## Key architecture and apps
    - The goal of the project is to enable shared decision making with patients
@@ -15,9 +20,6 @@
    - `sdm_platform\journeys` manages the configuration of a particular SDM journey (such as "backpain" or "kneepain")
    - `sdm_platform\evidence` uses ChromaDB to store a vector database of evidence to perform RAG (Retrieval-Augmented Generation) on patient queries over medical evidence literature
    - `sdm_platform\users` houses the user management system for managing patient and provider accounts
-
-   ## Python Environment
-   - Always use `uv run` to execute Python commands (e.g., `uv run python`, `uv run pytest`)
 
    ## Code Quality
    - Follow ruff linting rules strictly

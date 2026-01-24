@@ -2,15 +2,18 @@
 
 {% load static compress %}
 
+{% block custom_css %}
+  {% compress css %}
+    <link href="{% static 'css/project.css' %}" rel="stylesheet" />
+    <link href="{% static 'css/onboarding-tour.css' %}" rel="stylesheet" />
+  {% endcompress %}
+  <link href="{% static 'vendor/driverjs/driver.css' %}" rel="stylesheet" />
+{% endblock custom_css %}
 {% block body %}
   {% csrf_token %}
-  <script>
-    window.isViewingAsAdmin = {
-      {
-        conversation_owner | yesno: "true,false"
-      }
-    };
-  </script>
+  <div id="pageConfig"
+       data-is-viewing-as-admin="{{ conversation_owner|yesno:'true,false' }}"
+       hidden></div>
   <div class="chat-layout">
     <!-- Sidebar -->
     <div class="sidebar">
@@ -127,6 +130,7 @@
 {% endblock body %}
 {% block user_javascript %}
   <script src="{% static 'vendor/marked/marked.min.js' %}"></script>
+  <script src="{% static 'vendor/driverjs/driver.js.iife.js' %}"></script>
   {% compress js %}
     <script defer src="{% static 'js/websocket-base.js' %}"></script>
     <script defer src="{% static 'js/chat-websocket.js' %}"></script>
@@ -134,4 +138,5 @@
     <script defer src="{% static 'js/conversationpoints.js' %}"></script>
     <script defer src="{% static 'js/chat.js' %}"></script>
   {% endcompress %}
+  <script src="{% static 'js/onboarding-tour.js' %}"></script>
 {% endblock user_javascript %}

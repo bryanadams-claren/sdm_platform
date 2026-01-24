@@ -84,6 +84,14 @@ class ConversationPoint(models.Model):
         ),
     )
 
+    suggested_questions = models.JSONField(
+        default=list,
+        help_text=(
+            "Question starters shown as clickable bubbles to help users ask questions. "
+            "Example: ['Can you tell me more about...', 'What are the risks of...']"
+        ),
+    )
+
     completion_criteria = models.JSONField(
         default=dict,
         help_text=(

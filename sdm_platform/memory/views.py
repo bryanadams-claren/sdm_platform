@@ -117,6 +117,7 @@ def conversation_points_api(request, conv_id):
                 "title": point.title,
                 "description": point.description,
                 "curiosity_prompt": point.curiosity_prompt,
+                "suggested_questions": point.suggested_questions,
                 "sort_order": point.sort_order,
                 "is_addressed": False,
                 "confidence_score": 0.0,

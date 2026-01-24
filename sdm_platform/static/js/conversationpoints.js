@@ -18,6 +18,13 @@ let cooldownInterval = null;
 // Cooldown duration in milliseconds (10 minutes)
 const COOLDOWN_DURATION_MS = 10 * 60 * 1000;
 
+// Default suggestions shown when clicking "Ask A Question" button
+const DEFAULT_SUGGESTIONS = [
+  "Can you tell me more about...",
+  "What other options haven't we mentioned yet?",
+  "Help me decide between these options...",
+];
+
 /**
  * Fetch conversation points from the API
  * @param {string} convId - The conversation ID
@@ -68,12 +75,12 @@ function renderConversationPoints(points, journeyTitle) {
     `;
   chatList.appendChild(header);
 
-  // Add Guide Me button (always visible)
+  // Add Ask A Question button (always visible)
   const guideBtn = document.createElement("button");
   guideBtn.id = "guideMeBtn";
   guideBtn.className = "btn btn-primary btn-sm sidebar-action-btn";
-  guideBtn.innerHTML = '<i class="bi bi-compass me-1"></i> Guide Me';
-  guideBtn.addEventListener("click", handleGuideMeClick);
+  guideBtn.innerHTML = '<i class="bi bi-chat-text me-1"></i> Ask A Question';
+  guideBtn.addEventListener("click", handleAskQuestionClick);
   header.appendChild(guideBtn);
 
   // Add Summarize Now button
@@ -220,21 +227,66 @@ function createConversationPointElement(point) {
  */
 
 /**
- * Handle clicking the "Guide Me" button - initiates the next incomplete conversation point
+ * Handle clicking the "Ask A Question" button - shows default suggestions
  */
-function handleGuideMeClick() {
-  // Find first incomplete point (already sorted by sort_order from API)
-  const incompletePoint = currentConversationPoints.find(
-    (p) => !p.is_addressed,
-  );
+function handleAskQuestionClick() {
+  // Show default suggestions in the bubbles
+  renderSuggestionBubbles(DEFAULT_SUGGESTIONS);
+}
 
-  if (incompletePoint) {
-    handleConversationPointClick(incompletePoint);
-  } else {
-    // All points complete - show a friendly message
-    alert(
-      "Great job! You've covered all the conversation topics. Your summary PDF should be available soon.",
-    );
+/**
+ * Render suggestion bubbles above the chat input
+ * @param {Array<string>} questions - Array of question strings to display as bubbles
+ */
+function renderSuggestionBubbles(questions) {
+  const container = document.getElementById("suggestionBubbles");
+  if (!container) {
+    console.error("suggestionBubbles container not found");
+    return;
+  }
+
+  // Clear existing bubbles
+  container.innerHTML = "";
+
+  // If no questions, leave empty (CSS will hide it)
+  if (!questions || questions.length === 0) {
+    return;
+  }
+
+  // Create bubble for each question
+  questions.forEach((question) => {
+    const bubble = document.createElement("button");
+    bubble.type = "button";
+    bubble.className = "suggestion-bubble";
+    bubble.textContent = question;
+    bubble.addEventListener("click", () => handleBubbleClick(question));
+    container.appendChild(bubble);
+  });
+}
+
+/**
+ * Handle clicking a suggestion bubble - populate input and focus
+ * @param {string} question - The question text to populate
+ */
+function handleBubbleClick(question) {
+  const input = document.getElementById("chatInput");
+  if (input && !input.disabled) {
+    input.value = question;
+    input.focus();
+    // Place cursor at end of text
+    input.setSelectionRange(question.length, question.length);
+  }
+  // Clear bubbles after selection
+  clearSuggestionBubbles();
+}
+
+/**
+ * Clear all suggestion bubbles
+ */
+function clearSuggestionBubbles() {
+  const container = document.getElementById("suggestionBubbles");
+  if (container) {
+    container.innerHTML = "";
   }
 }
 
@@ -296,6 +348,14 @@ function stopPointsRefresh() {
 
 function handleConversationPointClick(point) {
   console.log("Conversation point clicked:", point);
+
+  // Show suggested questions for this point (if any)
+  if (point.suggested_questions && point.suggested_questions.length > 0) {
+    renderSuggestionBubbles(point.suggested_questions);
+  } else {
+    // Fall back to default suggestions
+    renderSuggestionBubbles(DEFAULT_SUGGESTIONS);
+  }
 
   // Get CSRF token for POST request
   const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]")?.value;
@@ -717,4 +777,6 @@ window.ConversationPoints = {
   startSummaryCheck: startSummaryCheck,
   subscribeToStatus: subscribeToStatusEvents,
   unsubscribeFromStatus: unsubscribeFromStatusEvents,
+  renderSuggestions: renderSuggestionBubbles,
+  clearSuggestions: clearSuggestionBubbles,
 };

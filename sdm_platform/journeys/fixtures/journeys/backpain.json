@@ -326,6 +326,11 @@
         "whether or not to",
         "alternatives"
       ],
+      "suggested_questions": [
+        "What decision am I being asked to make?",
+        "Do I have to decide right now?",
+        "Who else should be involved in this decision?"
+      ],
       "confidence_threshold": 0.85,
       "sort_order": 1,
       "is_active": true
@@ -366,6 +371,11 @@
         "comparison",
         "Option A",
         "Option B"
+      ],
+      "suggested_questions": [
+        "What are all my treatment options?",
+        "What happens if I do nothing?",
+        "Which option do most people choose?"
       ],
       "confidence_threshold": 0.85,
       "sort_order": 2,
@@ -412,6 +422,11 @@
         "complications",
         "pain relief"
       ],
+      "suggested_questions": [
+        "What are the risks of this treatment?",
+        "How likely is it to work?",
+        "What side effects should I expect?"
+      ],
       "confidence_threshold": 0.85,
       "sort_order": 3,
       "is_active": true
@@ -455,6 +470,11 @@
         "maintaining mobility",
         "independence",
         "family activities"
+      ],
+      "suggested_questions": [
+        "How do I figure out what's most important to me?",
+        "What questions should I ask myself?",
+        "How does this fit with my lifestyle?"
       ],
       "confidence_threshold": 0.85,
       "sort_order": 4,
@@ -500,6 +520,11 @@
         "need to think",
         "involve my family",
         "not sure yet"
+      ],
+      "suggested_questions": [
+        "Help me decide between these options...",
+        "What would you recommend for someone like me?",
+        "What should I ask my doctor?"
       ],
       "confidence_threshold": 0.85,
       "sort_order": 5,

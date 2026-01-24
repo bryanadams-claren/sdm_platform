@@ -31,6 +31,7 @@ class ConversationPoint(models.Model):
     elicitation_goals = JSONField()  # Specific info to gather
     example_questions = JSONField()  # Sample questions to adapt
     completion_criteria = JSONField()  # What "complete" means (informational)
+    suggested_questions = JSONField()  # Question starters shown as clickable bubbles
 
     # Semantic extraction config
     semantic_keywords = JSONField()  # Keywords indicating topic discussed
@@ -285,7 +286,7 @@ extract_all_memories task (Celery, async)
 
 ### Views & APIs
 - `sdm_platform/memory/views.py` - API endpoints:
-  - `conversation_points_api()` - Get points with completion status (includes curiosity_prompt)
+  - `conversation_points_api()` - Get points with completion status (includes curiosity_prompt, suggested_questions)
   - `initiate_conversation_point()` - User clicks point to initiate discussion
   - `conversation_summary_status()` - Check if PDF summary is ready
   - `download_conversation_summary()` - Download PDF summary
@@ -434,6 +435,55 @@ This prevents IDE warnings when accessing `conversation.summary` while avoiding 
 
 6. **Missing thread_id** - Ensure thread_id is passed to extract_all_memories for status updates to work
 
+## Frontend: Suggestion Bubbles
+
+The chat interface includes clickable "suggestion bubbles" that help users formulate questions.
+
+### How It Works
+
+1. **"Ask A Question" button** (formerly "Guide Me") - Clicking shows default suggestions:
+   - "Can you tell me more about..."
+   - "What other options haven't we mentioned yet?"
+   - "Help me decide between these options..."
+
+2. **Conversation point click** - Clicking a conversation point in the sidebar:
+   - Shows that point's `suggested_questions` as bubbles
+   - Falls back to defaults if no suggestions configured
+
+3. **Bubble interaction** - Clicking a bubble:
+   - Populates the chat input field with the question text
+   - Focuses the input for editing
+   - Clears the bubbles
+
+### Key Files
+
+- `sdm_platform/templates/llmchat/conversation.html` - Contains `#suggestionBubbles` container
+- `sdm_platform/static/js/conversationpoints.js` - Bubble rendering logic:
+  - `renderSuggestionBubbles(questions)` - Displays bubbles
+  - `handleBubbleClick(question)` - Populates input
+  - `clearSuggestionBubbles()` - Removes bubbles
+  - Exports via `window.ConversationPoints.renderSuggestions` / `clearSuggestions`
+- `sdm_platform/static/css/project.css` - `.suggestion-bubbles` and `.suggestion-bubble` styles
+
+### Configuring Suggestions
+
+Add `suggested_questions` to conversation points in the fixture JSON:
+
+```json
+{
+  "slug": "clarify-values",
+  "title": "Clarify your values and preferences",
+  "suggested_questions": [
+    "How do I figure out what's most important to me?",
+    "What questions should I ask myself?",
+    "How does this fit with my lifestyle?"
+  ],
+  ...
+}
+```
+
+Then reload: `uv run python manage.py load_journeys --force`
+
 ## Summary
 
 The memory system is a two-layer architecture:
@@ -441,3 +491,5 @@ The memory system is a two-layer architecture:
 2. **Dynamic layer** (LangGraph store): Per-user extracted memories
 
 When the AI initiates a conversation point, it combines both layers to ask informed, targeted questions that build on what it already knows about the user.
+
+The frontend complements this with suggestion bubbles that guide users toward productive questions, with each conversation point able to define its own contextual suggestions.

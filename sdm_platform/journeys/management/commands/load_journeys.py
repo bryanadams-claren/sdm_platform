@@ -252,6 +252,7 @@ class Command(BaseCommand):
                 defaults={
                     "title": cp_data.get("title", cp_slug.replace("-", " ").title()),
                     "description": cp_data.get("description", ""),
+                    "curiosity_prompt": cp_data.get("curiosity_prompt", ""),
                     "system_message_template": cp_data.get(
                         "system_message_template", ""
                     ),
@@ -263,6 +264,7 @@ class Command(BaseCommand):
                     "elicitation_goals": cp_data.get("elicitation_goals", []),
                     "example_questions": cp_data.get("example_questions", []),
                     "completion_criteria": cp_data.get("completion_criteria", {}),
+                    "suggested_questions": cp_data.get("suggested_questions", []),
                 },
             )
 

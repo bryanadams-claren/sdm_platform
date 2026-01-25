@@ -343,8 +343,6 @@ ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 # https://docs.allauth.org/en/latest/account/configuration.html
-ACCOUNT_EMAIL_REQUIRED = True
-# https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_ADAPTER = "sdm_platform.users.adapters.AccountAdapter"
@@ -424,3 +422,11 @@ AI_ASSISTANT_NAME = "Claire"
 # - assistant: LLM only responds to messages starting with @llm (default)
 # - autonomous: LLM responds to every human message (1:1 chat)
 LLM_GRAPH_MODE = env("LLM_GRAPH_MODE", default="autonomous")  # pyright: ignore[reportArgumentType]
+
+# LLM Model Configuration
+# ------------------------------------------------------------------------------
+# Model strings should be in format "provider:model_name" (e.g., "openai:gpt-4.1")
+# Used by langchain's init_chat_model()
+LLM_CHAT_MODEL = env("LLM_CHAT_MODEL", default="openai:gpt-4.1")
+LLM_EXTRACTION_MODEL = env("LLM_EXTRACTION_MODEL", default="openai:gpt-4.1")
+LLM_SUMMARY_MODEL = env("LLM_SUMMARY_MODEL", default="openai:gpt-4.1")

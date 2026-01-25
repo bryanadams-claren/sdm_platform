@@ -8,6 +8,7 @@ from datetime import date
 from datetime import datetime
 
 from celery import shared_task
+from django.conf import settings
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
@@ -20,8 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 HIGH_CONFIDENCE = 0.8
-
-EXTRACTION_MODEL = "openai:gpt-4.1"
 
 
 def _parse_birthday(value: str | None) -> date | None:
@@ -79,7 +78,7 @@ def extract_user_profile_memory(user_id: str, messages_json: list[dict]):
     if not messages_json:
         return
 
-    model = init_chat_model(EXTRACTION_MODEL)
+    model = init_chat_model(settings.LLM_EXTRACTION_MODEL)
 
     # Format messages for extraction
     messages_text = "\n".join(
@@ -227,7 +226,7 @@ def extract_conversation_point_memories(  # noqa: C901, PLR0912, PLR0915
             logger.debug("No conversation points found for journey %s", journey_slug)
             return None
 
-        model = init_chat_model(EXTRACTION_MODEL)
+        model = init_chat_model(settings.LLM_EXTRACTION_MODEL)
 
         # Format messages for extraction
         messages_text = "\n".join(

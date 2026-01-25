@@ -12,14 +12,21 @@ class ConversationAdmin(ModelAdmin):
         "title",
         "user",
         "is_active",
-        "model_name",
+        "message_count",
+        "last_message_at",
         "created_at",
         "view_conversation_link",
     )
-    list_filter = ("is_active", "model_name")
+    list_filter = ("is_active",)
     search_fields = ("title", "conv_id", "thread_id", "user__username", "user__email")
     raw_id_fields = ("user",)
-    readonly_fields = ("created_at", "updated_at", "view_conversation_link")
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "message_count",
+        "last_message_at",
+        "view_conversation_link",
+    )
 
     @admin.display(description="View Conversation")
     def view_conversation_link(self, obj):

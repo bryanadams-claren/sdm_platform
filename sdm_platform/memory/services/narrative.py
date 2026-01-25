@@ -2,6 +2,7 @@
 
 import logging
 
+from django.conf import settings
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import SystemMessage
 
@@ -112,7 +113,7 @@ Expected timeline: {opt.typical_timeline or "Not specified"}
     )
 
     # Call LLM with max_tokens to enforce length limit
-    model = init_chat_model("openai:gpt-4.1", max_tokens=1500)
+    model = init_chat_model(settings.LLM_SUMMARY_MODEL, max_tokens=1500)
     messages = [SystemMessage(content=prompt_text)]
 
     logger.info(

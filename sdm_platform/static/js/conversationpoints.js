@@ -105,7 +105,7 @@ function renderConversationPoints(points, journeyTitle) {
     <div class="spinner-border spinner-border-sm text-muted me-2" role="status">
       <span class="visually-hidden">Analyzing...</span>
     </div>
-    <span class="text-muted" style="font-size: 0.75rem;">Analyzing the conversation (you may continue the dialogue)...</span>
+    <span class="text-muted" style="font-size: 0.75rem;">Analyzing (you may continue the conversation)...</span>
   `;
   header.appendChild(extractionIndicator);
 
@@ -519,9 +519,7 @@ function hideExtractionIndicator() {
 function handleStatusChange(status) {
   if (status.type === "extraction_start") {
     console.log("[ConversationPoints] Extraction started");
-    showExtractionIndicator(
-      "Analyzing the conversation (you may continue the dialogue)...",
-    );
+    showExtractionIndicator("Analyzing (you may continue the conversation)...");
   } else if (status.type === "extraction_complete") {
     console.log("[ConversationPoints] Extraction complete, refreshing points");
     // If summary generation was triggered, update the indicator message

@@ -5,7 +5,6 @@ from datetime import date
 from django.contrib.auth import login
 from django.db import transaction
 from django.http import HttpResponse
-from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
@@ -18,6 +17,8 @@ from sdm_platform.llmchat.utils.format import format_thread_id
 from sdm_platform.memory.managers import UserProfileManager
 from sdm_platform.users.emails import send_welcome_email
 from sdm_platform.users.models import User
+from sdm_platform.utils.responses import json_error
+from sdm_platform.utils.responses import json_success
 
 from .models import Journey
 from .models import JourneyResponse
@@ -146,7 +147,7 @@ def handle_onboarding_submission(request, journey):  # noqa: C901
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
+        return json_error("Invalid JSON")
 
     # Step 0: Check for red flags first
     responses_dict = data.get("responses", {})
@@ -160,12 +161,9 @@ def handle_onboarding_submission(request, journey):  # noqa: C901
         }
 
         # Return redirect to not eligible page
-        return JsonResponse(
-            {
-                "success": True,
-                "not_eligible": True,
-                "redirect_url": f"/{journey.slug}/not-eligible/",
-            }
+        return json_success(
+            not_eligible=True,
+            redirect_url=f"/{journey.slug}/not-eligible/",
         )
 
     with transaction.atomic():
@@ -178,10 +176,10 @@ def handle_onboarding_submission(request, journey):  # noqa: C901
             birthday = data.get("birthday", "").strip()
 
             if not name:
-                return JsonResponse({"error": "Name is required"}, status=400)
+                return json_error("Name is required")
 
             if not birthday:
-                return JsonResponse({"error": "Birthday is required"}, status=400)
+                return json_error("Birthday is required")
 
             # Generate email if not provided (for truly anonymous)
             if not email:
@@ -193,9 +191,7 @@ def handle_onboarding_submission(request, journey):  # noqa: C901
                 try:
                     date_of_birth = date.fromisoformat(birthday)
                 except ValueError:
-                    return JsonResponse(
-                        {"error": "Invalid birthday format"}, status=400
-                    )
+                    return json_error("Invalid birthday format")
 
             # Check if user exists
             user, created = User.objects.get_or_create(
@@ -277,6 +273,4 @@ def handle_onboarding_submission(request, journey):  # noqa: C901
                 )
 
         # Step 5: Return success with redirect URL
-        return JsonResponse(
-            {"success": True, "redirect_url": f"/chat/conversation/{conv_id}/"}
-        )
+        return json_success(redirect_url=f"/chat/conversation/{conv_id}/")

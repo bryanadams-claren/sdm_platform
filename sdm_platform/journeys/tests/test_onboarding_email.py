@@ -31,6 +31,7 @@ class OnboardingEmailIntegrationTests(TestCase):
         data = {
             "name": "New User",
             "email": "newuser@example.com",
+            "birthday": "1990-01-15",
             "responses": {"q1": "answer1"},
         }
 
@@ -61,6 +62,7 @@ class OnboardingEmailIntegrationTests(TestCase):
         data = {
             "name": "Existing User",
             "email": "existing@example.com",
+            "birthday": "1985-05-20",
             "responses": {"q1": "answer1"},
         }
 

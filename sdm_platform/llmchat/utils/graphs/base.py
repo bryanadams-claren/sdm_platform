@@ -3,14 +3,13 @@
 import logging
 
 import environ
+from django.conf import settings
 from langchain.chat_models import init_chat_model
 from langchain_openai import OpenAIEmbeddings
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.graph import MessagesState
 
 logger = logging.getLogger(__name__)
-
-CURRENT_MODEL = "openai:gpt-4.1"
 
 # This is the largest "cosine distance" we'll tolerate for RAG retrieval
 MAX_DISTANCE_METRIC = 0.5
@@ -34,7 +33,7 @@ class SdmState(MessagesState):
 
 def get_model():
     """Get the shared LLM model instance."""
-    return init_chat_model(CURRENT_MODEL)
+    return init_chat_model(settings.LLM_CHAT_MODEL)
 
 
 def get_embeddings():

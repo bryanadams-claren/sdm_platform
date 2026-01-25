@@ -196,10 +196,10 @@ class JourneyResponse(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     journey = models.ForeignKey(
-        Journey, on_delete=models.DO_NOTHING, related_name="responses"
+        Journey, on_delete=models.PROTECT, related_name="responses"
     )
     user = models.ForeignKey(
-        User, on_delete=models.DO_NOTHING, related_name="journey_responses"
+        User, on_delete=models.PROTECT, related_name="journey_responses"
     )
 
     # Stores responses as key-value pairs matching question IDs

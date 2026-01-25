@@ -56,6 +56,17 @@ class Conversation(models.Model):
     system_prompt = models.TextField(blank=True, default="")  # initial instructions
     model_name = models.CharField(max_length=100, default="gpt-4")  # which LLM used
 
+    # Analytics fields for reporting
+    message_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of messages in this conversation",
+    )
+    last_message_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp of the most recent message",
+    )
+
     if TYPE_CHECKING:
         # Reverse OneToOne relationships for type checkers
         summary: "ConversationSummary"

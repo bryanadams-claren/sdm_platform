@@ -1,4 +1,4 @@
-# ruff: noqa: PT009, PT027 S106
+# ruff: noqa: PT027, S106
 # ... ignore the assertion stuff and also the hardcoded passwords
 # pyright: reportGeneralTypeIssues=false, reportArgumentType=false
 # ... the channel stuff
@@ -230,7 +230,7 @@ class ConversationViewTest(TestCase):
             content_type="application/json",
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 400)
         response_data = json.loads(response.content)
         self.assertFalse(response_data["success"])
         self.assertIn("error", response_data)

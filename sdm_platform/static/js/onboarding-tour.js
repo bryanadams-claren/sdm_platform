@@ -25,7 +25,7 @@ const TOUR_STEPS = [
     popover: {
       title: "Track Your Progress",
       description:
-        "These five conversation points show your progress through the shared decision making process. As you chat with Claire, the circles will update to show which topics you've covered.",
+        "These five conversation points show your progress through the shared decision making process. As you chat with Claire, the circles will update to show which topics you've covered.  You can also click on any of them to advance that part of the conversation!",
       side: "right",
       align: "start",
     },

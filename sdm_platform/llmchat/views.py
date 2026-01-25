@@ -10,6 +10,10 @@ from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from langchain_core.runnables import RunnableConfig
 
+from sdm_platform.utils.permissions import can_access_conversation
+from sdm_platform.utils.responses import json_error
+from sdm_platform.utils.responses import json_success
+
 from .models import Conversation
 from .utils.chat_history import get_chat_history
 from .utils.format import format_message
@@ -17,13 +21,6 @@ from .utils.graphs import get_compiled_graph
 from .utils.graphs import get_postgres_checkpointer
 
 _CONVERSATION_NOT_FOUND = "Conversation not found"
-
-
-def _can_access_conversation(user, conv_id):
-    """Check if user can access the conversation (owner or admin)."""
-    if user.is_staff:
-        return True
-    return Conversation.objects.filter(user=user, conv_id=conv_id).exists()
 
 
 @login_required
@@ -38,9 +35,9 @@ def conversation(request, conv_id=None):
                 title=data["title"],
                 thread_id=f"chat_{request.user}_{conv_id}".replace("@", "_at_"),
             )
-            return JsonResponse({"success": True})
+            return json_success()
         except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": "Invalid JSON"})
+            return json_error("Invalid JSON")
     else:
         # For admins viewing a specific conversation, show that conversation
         if conv_id and request.user.is_staff:
@@ -61,7 +58,7 @@ def conversation(request, conv_id=None):
             raise Http404(_CONVERSATION_NOT_FOUND)
 
         # Check access for non-admin users viewing a specific conversation
-        if conv_id and not _can_access_conversation(request.user, conv_id):
+        if conv_id and not can_access_conversation(request.user, conv_id):
             raise Http404(_CONVERSATION_NOT_FOUND)
 
         conversations = Conversation.objects.filter(user=request.user).order_by(
@@ -98,7 +95,7 @@ def _get_name(msg):
 @login_required
 def history(request, conv_id):
     # Check access permissions
-    if not _can_access_conversation(request.user, conv_id):
+    if not can_access_conversation(request.user, conv_id):
         raise Http404(_CONVERSATION_NOT_FOUND)
 
     # For admins, get the thread_id from the actual conversation owner

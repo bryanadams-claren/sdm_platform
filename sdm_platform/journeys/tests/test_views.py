@@ -203,6 +203,7 @@ class JourneyOnboardingViewTest(TestCase):
         data = {
             "name": "New User",
             "email": "newuser@example.com",
+            "birthday": "1990-01-15",
             "responses": {
                 "duration": "3-6 months",
             },
@@ -242,6 +243,7 @@ class JourneyOnboardingViewTest(TestCase):
         """Test POST submission when anonymous without email (generates one)"""
         data = {
             "name": "Anonymous User",
+            "birthday": "1985-05-20",
             "responses": {
                 "duration": "Over 6 months",
             },

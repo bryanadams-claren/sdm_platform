@@ -9,6 +9,8 @@ from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
 from django.conf import settings
+from django.db.models import F
+from django.utils import timezone
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
@@ -156,12 +158,13 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
                 config,
             )
 
-        now = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
-        conversation.updated_at = now
-        conversation.save()
-
         # Send reply if LLM responded (memory extraction is handled by graph node)
         if reply["messages"][-1].type == "ai":
+            # Update conversation analytics (user message + AI response = 2 messages)
+            Conversation.objects.filter(thread_id=thread_name).update(
+                message_count=F("message_count") + 2,
+                last_message_at=timezone.now(),
+            )
             reply_dict = format_message(
                 "bot",
                 settings.AI_ASSISTANT_NAME,
@@ -266,7 +269,7 @@ def send_ai_initiated_message(
             )
 
             # Call the LLM directly to generate the AI's proactive message
-            model = init_chat_model("openai:gpt-4.1")
+            model = init_chat_model(settings.LLM_CHAT_MODEL)
 
             # Build messages for the LLM call
             prompt_messages = [SystemMessage(content="\n\n".join(system_context_parts))]
@@ -319,10 +322,12 @@ def send_ai_initiated_message(
                 },
             )
 
-        # Update conversation timestamp
-        now = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
-        conversation.updated_at = now
-        conversation.save()
+        # Update conversation analytics (AI-initiated message = 1 message)
+        now = timezone.now()
+        Conversation.objects.filter(thread_id=thread_name).update(
+            message_count=F("message_count") + 1,
+            last_message_at=now,
+        )
 
         # Send the message through WebSocket
         reply_dict = format_message(

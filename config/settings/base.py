@@ -426,7 +426,26 @@ LLM_GRAPH_MODE = env("LLM_GRAPH_MODE", default="autonomous")  # pyright: ignore[
 # LLM Model Configuration
 # ------------------------------------------------------------------------------
 # Model strings should be in format "provider:model_name" (e.g., "openai:gpt-4.1")
-# Used by langchain's init_chat_model()
+# Used by langchain's init_chat_model() and init_embeddings()
 LLM_CHAT_MODEL = env("LLM_CHAT_MODEL", default="openai:gpt-4.1")
 LLM_EXTRACTION_MODEL = env("LLM_EXTRACTION_MODEL", default="openai:gpt-4.1")
 LLM_SUMMARY_MODEL = env("LLM_SUMMARY_MODEL", default="openai:gpt-4.1")
+
+# Embedding Model Configuration
+# ------------------------------------------------------------------------------
+# WARNING: Changing the embedding model requires re-ingesting ALL documents in ChromaDB.
+# Different embedding models produce incompatible vector spaces. If you change this value,
+# you must re-run document ingestion for all existing documents.
+LLM_EMBEDDING_MODEL = env(
+    "LLM_EMBEDDING_MODEL", default="openai:text-embedding-3-small"
+)
+
+# RAG Retrieval Configuration
+# ------------------------------------------------------------------------------
+# Maximum distance score for RAG retrieval results. Lower scores = better matches.
+# Range is 0.0 to 2.0 for cosine distance (Chroma default).
+# - 0.0 = identical vectors
+# - 1.0 = orthogonal vectors
+# - 2.0 = opposite vectors
+# Results with scores above this threshold are filtered out.
+RAG_MAX_DISTANCE = env.float("RAG_MAX_DISTANCE", default=1.0)

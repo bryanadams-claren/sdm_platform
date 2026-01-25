@@ -12,10 +12,51 @@ class DocumentAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "version",
-        "is_processed",
+        "processing_status",
         "is_active",
         "vector_count",
+        "journey",
         "uploaded_at",
+    )
+    list_filter = ("processing_status", "is_active", "journey")
+    search_fields = ("name",)
+    readonly_fields = (
+        "processing_error",
+        "processing_duration_seconds",
+        "embedding_model",
+        "vector_count",
+        "chroma_collection",
+        "processed_at",
+        "uploaded_at",
+    )
+    fieldsets = (
+        (
+            "Document Info",
+            {"fields": ("name", "file", "content_type", "journey", "uploaded_by")},
+        ),
+        (
+            "Processing",
+            {
+                "fields": (
+                    "processing_status",
+                    "processing_error",
+                    "processing_duration_seconds",
+                    "processed_at",
+                )
+            },
+        ),
+        (
+            "Vector Storage",
+            {"fields": ("embedding_model", "chroma_collection", "vector_count")},
+        ),
+        (
+            "Chunking Parameters",
+            {"fields": ("chunk_size", "chunk_overlap")},
+        ),
+        (
+            "Lifecycle",
+            {"fields": ("version", "is_active", "uploaded_at")},
+        ),
     )
     actions = ["ingest_selected", "delete_from_chroma"]
 
@@ -24,6 +65,9 @@ class DocumentAdmin(admin.ModelAdmin):
     )
     def ingest_selected(self, request, queryset):
         for doc in queryset:
+            # Mark as queued before starting ingestion
+            doc.processing_status = Document.ProcessingStatus.QUEUED
+            doc.save(update_fields=["processing_status"])
             call_command("ingest_document", str(doc.id))
         self.message_user(
             request,

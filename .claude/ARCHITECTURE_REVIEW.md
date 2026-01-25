@@ -323,14 +323,14 @@ class ConversationPointProgress(models.Model):
 
 ## Summary: Prioritized Recommendations
 
-### Quick Wins (Do This Week)
+### Quick Wins (THESE HAVE BEEN IMPLEMENTED)
 1. Create `utils/permissions.py` with unified conversation access check
 2. Create `utils/responses.py` with standardized JSON response helpers
 3. Fix `JourneyResponse` cascade delete (change to PROTECT or add soft-delete)
 4. Add `message_count` and `last_message_at` to Conversation model
 
 ### Medium Projects (Plan for Next Sprint)
-5. Centralize LLM model configuration in Django settings
+5. Centralize LLM model configuration in Django settings (THIS IS COMPLETED)
 6. Remove conv_id and use thread_id everywhere
 7. Replace ReportLab with WeasyPrint for PDF generation
 8. Add `user_type` field to User model

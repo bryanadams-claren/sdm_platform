@@ -16,13 +16,13 @@ from chromadb.api.types import Metadatas as chMetadatas
 from chromadb.errors import ChromaError
 from django.conf import settings
 from django.urls import reverse
+from langchain.embeddings import init_embeddings
 from langchain.embeddings.base import Embeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.document_loaders import TextLoader
 
 # LangChain loaders/splitter/embeddings
 from langchain_community.document_loaders import UnstructuredFileLoader
-from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from sdm_platform.evidence.models import Document
@@ -72,12 +72,14 @@ class DocumentIngestor:
     """
     Ingest a Document into Chroma with a safe tmp -> perm swap.
 
-    Defaults to OpenAIEmbeddings() when no embedding_model is provided.
+    Defaults to the configured LLM_EMBEDDING_MODEL when no embedding_model is provided.
     """
 
     def __init__(self, document: Document, embedding_model: Embeddings | None = None):
         self.document = document
-        self.embedding_model = embedding_model or OpenAIEmbeddings()
+        self.embedding_model = embedding_model or init_embeddings(
+            settings.LLM_EMBEDDING_MODEL
+        )
         self.chroma_client = get_chroma_client()
         logger.info(
             "DocumentIngestor initialized: document=%s use_cloud=%s",
@@ -276,15 +278,17 @@ class DocumentIngestor:
         old_collection = self.document.chroma_collection
         self.document.chroma_collection = perm_col_name
         self.document.vector_count = count
-        self.document.is_processed = True
+        self.document.processing_status = Document.ProcessingStatus.COMPLETED
         self.document.is_active = True
         self.document.processed_at = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
+        self.document.embedding_model = settings.LLM_EMBEDDING_MODEL
         self.document.save(
             update_fields=[
                 "chroma_collection",
                 "vector_count",
-                "is_processed",
+                "processing_status",
                 "processed_at",
+                "embedding_model",
             ],
         )
 

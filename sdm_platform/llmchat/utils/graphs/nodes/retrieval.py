@@ -2,10 +2,10 @@
 
 import logging
 
+from django.conf import settings
 from langchain_chroma import Chroma
 
 from sdm_platform.evidence.utils.chroma import get_chroma_client
-from sdm_platform.llmchat.utils.graphs.base import MAX_DISTANCE_METRIC
 from sdm_platform.llmchat.utils.graphs.base import SdmState
 from sdm_platform.llmchat.utils.graphs.base import _build_system_message_and_continue
 from sdm_platform.llmchat.utils.graphs.base import get_embeddings
@@ -56,9 +56,10 @@ def _retrieve_top_k_from_collections(  # noqa: PLR0913
                 embedding_function=embeddings,
             )
             # similarity_search_with_score returns (Document, score) pairs
+            # Lower scores = better matches (cosine distance range: 0.0-2.0)
             docs_and_scores = vs.similarity_search_with_score(query, k=per_collection_k)
             for doc, score in docs_and_scores:
-                if score < MAX_DISTANCE_METRIC:
+                if score < settings.RAG_MAX_DISTANCE:
                     candidates.append((doc, float(score), col))
         except Exception:
             logger.exception("Error searching collection %s", col)

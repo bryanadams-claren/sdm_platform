@@ -15,6 +15,13 @@ class Document(models.Model):
     Represents an uploaded document with versioning and lifecycle controls.
     """
 
+    class ProcessingStatus(models.TextChoices):
+        PENDING = "pending", "Pending"
+        QUEUED = "queued", "Queued"
+        PROCESSING = "processing", "Processing"
+        COMPLETED = "completed", "Completed"
+        FAILED = "failed", "Failed"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     file = models.FileField(upload_to="documents/")
     name = models.CharField(max_length=255)
@@ -31,27 +38,63 @@ class Document(models.Model):
     is_active = models.BooleanField(default=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(blank=True, null=True, default=None)
-    is_processed = models.BooleanField(default=False)
+
+    # processing status (replaces is_processed boolean)
+    processing_status = models.CharField(
+        max_length=20,
+        choices=ProcessingStatus.choices,
+        default=ProcessingStatus.PENDING,
+    )
+    processing_error = models.TextField(
+        blank=True,
+        default="",
+        help_text="Error message if processing failed",
+    )
+    processing_duration_seconds = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Time taken to process the document",
+    )
 
     # vector DB integration
     chroma_collection = models.CharField(max_length=255, blank=True, default="")
     vector_count = models.PositiveIntegerField(default=0)
+    embedding_model = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="The embedding model used (e.g., 'openai:text-embedding-3-small')",
+    )
 
+    # relationships
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
     )
+    journey = models.ForeignKey(
+        "journeys.Journey",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="evidence_documents",
+        help_text="If set, this evidence only applies to this journey's RAG retrieval",
+    )
 
     def __str__(self):
         return f"{self.name} (v{self.version})"
 
+    @property
+    def is_processed(self):
+        """Backwards-compatible property for checking if document is processed."""
+        return self.processing_status == self.ProcessingStatus.COMPLETED
+
     def bump_version(self):
         self.version += 1
-        self.is_processed = False
+        self.processing_status = self.ProcessingStatus.PENDING
         self.processed_at = None
-        self.save(update_fields=["version", "is_processed", "processed_at"])
+        self.save(update_fields=["version", "processing_status", "processed_at"])
 
     def delete(self, *args, **kwargs):  # pyright: ignore[reportIncompatibleMethodOverride]
         """Ensure deletion cascades to Chroma."""
@@ -81,7 +124,6 @@ class DocumentChunk(models.Model):
     chunk_index = models.PositiveIntegerField()
     text = models.TextField()
     text_hash = models.CharField(max_length=64, blank=True, default="")
-    embedding_cached = models.JSONField(blank=True, default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -12,6 +12,10 @@ from langgraph.store.postgres import PostgresStore
 env = environ.Env()
 logger = getLogger(__name__)
 
+# Memory types that need to be cleaned up when a user is deleted
+MEMORY_TYPES = ["profile", "insights"]
+JOURNEY_MEMORY_TYPES = ["journey", "conversation_points"]
+
 
 @contextmanager
 def get_memory_store() -> Generator[PostgresStore, None, None]:
@@ -99,3 +103,75 @@ def get_user_namespace(
     return namespaces.get(
         memory_type, ("memory", "users", encoded_user_id, memory_type)
     )
+
+
+def delete_user_memories(user_id: str, journey_slugs: list[str] | None = None) -> int:
+    """
+    Delete all memory store data for a user.
+
+    Args:
+        user_id: User identifier (typically email)
+        journey_slugs: List of journey slugs the user participated in.
+                       If None, only non-journey memories are deleted.
+
+    Returns:
+        Number of items deleted
+    """
+    deleted_count = 0
+    encoded_user_id = _encode_user_id(user_id)
+
+    with get_memory_store() as store:
+        # Delete non-journey memories (profile, insights)
+        for memory_type in MEMORY_TYPES:
+            namespace = get_user_namespace(user_id, memory_type)
+            try:
+                items = list(store.search(namespace))
+                for item in items:
+                    store.delete(namespace, item.key)
+                    deleted_count += 1
+                logger.info(
+                    "Deleted %d %s memories for user %s",
+                    len(items),
+                    memory_type,
+                    encoded_user_id,
+                )
+            except Exception:
+                logger.exception(
+                    "Error deleting %s memories for user %s",
+                    memory_type,
+                    encoded_user_id,
+                )
+
+        # Delete journey-specific memories
+        if journey_slugs:
+            for journey_slug in journey_slugs:
+                for memory_type in JOURNEY_MEMORY_TYPES:
+                    namespace = get_user_namespace(
+                        user_id, memory_type, journey_slug=journey_slug
+                    )
+                    try:
+                        items = list(store.search(namespace))
+                        for item in items:
+                            store.delete(namespace, item.key)
+                            deleted_count += 1
+                        logger.info(
+                            "Deleted %d %s memories for user %s, journey %s",
+                            len(items),
+                            memory_type,
+                            encoded_user_id,
+                            journey_slug,
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Error deleting %s memories for user %s, journey %s",
+                            memory_type,
+                            encoded_user_id,
+                            journey_slug,
+                        )
+
+    logger.info(
+        "Total memories deleted for user %s: %d",
+        encoded_user_id,
+        deleted_count,
+    )
+    return deleted_count

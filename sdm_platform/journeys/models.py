@@ -199,7 +199,7 @@ class JourneyResponse(models.Model):
         Journey, on_delete=models.PROTECT, related_name="responses"
     )
     user = models.ForeignKey(
-        User, on_delete=models.PROTECT, related_name="journey_responses"
+        User, on_delete=models.CASCADE, related_name="journey_responses"
     )
 
     # Stores responses as key-value pairs matching question IDs
@@ -208,7 +208,7 @@ class JourneyResponse(models.Model):
     # Track the associated conversation created from this journey
     conversation = models.OneToOneField(
         "llmchat.Conversation",
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="journey_response",

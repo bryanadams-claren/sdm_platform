@@ -108,3 +108,42 @@ def delete_langchain_history_on_conversation_delete(
             "Failed to delete LangChain history for thread_id=%s",
             thread_id,
         )
+
+
+@receiver(post_delete, sender=Conversation)
+def delete_memory_store_on_conversation_delete(
+    sender,
+    instance: Conversation,
+    **kwargs,
+):
+    """
+    When a Conversation is deleted, also delete the associated memory store data.
+
+    This cleans up journey-specific memories (conversation points, etc.)
+    for this user/journey combination.
+    """
+    # Only delete if conversation had a journey
+    if not instance.journey:
+        return
+
+    user_email = instance.user.email
+    journey_slug = instance.journey.slug
+
+    try:
+        from sdm_platform.memory.store import delete_user_memories  # noqa: PLC0415
+
+        # Only delete journey-specific memories, not profile/insights
+        deleted_count = delete_user_memories(user_email, [journey_slug])
+        logger.info(
+            "Deleted %d memory items for conversation %s (user=%s, journey=%s)",
+            deleted_count,
+            instance.id,
+            user_email,
+            journey_slug,
+        )
+    except Exception:
+        # Don't block the ORM delete; just log.
+        logger.exception(
+            "Failed to delete memory store data for conversation %s",
+            instance.id,
+        )

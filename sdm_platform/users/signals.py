@@ -1,42 +1,52 @@
-"""Signal handlers for user authentication events."""
+"""Signals for user model events."""
 
 import logging
 
-from allauth.account.models import EmailAddress
-from allauth.account.signals import password_reset
+from django.db.models.signals import pre_delete
 from django.dispatch import receiver
+
+from sdm_platform.users.models import User
 
 logger = logging.getLogger(__name__)
 
 
-@receiver(password_reset)
-def auto_verify_email_on_password_reset(sender, request, user, **kwargs):
+@receiver(pre_delete, sender=User)
+def delete_user_memory_store_data(sender, instance: User, **kwargs):
     """
-    Automatically verify user's email addy when they successfully reset their password.
+    Delete all memory store data for a user before they are deleted.
 
-    Rationale: If a user can receive and act on a password reset email, they have
-    proven they control the email address, so additional verification is redundant.
+    This cleans up:
+    - User profile memory
+    - User insights
+    - Journey-specific memories (conversation points, etc.)
 
-    Args:
-        sender: The sender of the signal
-        request: HttpRequest instance
-        user: User instance that reset their password
-        **kwargs: Additional keyword arguments
+    Uses pre_delete to access journey_responses before they're cascade deleted.
     """
-    if not user.emailaddress_set.filter(email=user.email, verified=True).exists():
-        # Mark the user's primary email as verified
-        email_address = user.emailaddress_set.filter(email=user.email).first()
-        if email_address:
-            email_address.verified = True
-            email_address.save(update_fields=["verified"])
-            logger.info(
-                f"Auto-verified email {user.email} after password reset, user {user.id}"
-            )
-        else:
-            # Create an email address record if it doesn't exist
-            EmailAddress.objects.create(
-                user=user, email=user.email, verified=True, primary=True
-            )
-            logger.info(
-                f"Created/verified email {user.email} after pwd reset, user {user.id}"
-            )
+    from sdm_platform.memory.store import delete_user_memories  # noqa: PLC0415
+
+    user_email = instance.email
+
+    # Get all journey slugs the user participated in (before cascade delete)
+    journey_slugs = list(
+        instance.journey_responses.values_list("journey__slug", flat=True)
+    )
+
+    logger.info(
+        "Deleting memory store data for user %s (journeys: %s)",
+        user_email,
+        journey_slugs,
+    )
+
+    try:
+        deleted_count = delete_user_memories(user_email, journey_slugs)
+        logger.info(
+            "Deleted %d memory items for user %s",
+            deleted_count,
+            user_email,
+        )
+    except Exception:
+        # Log but don't block user deletion
+        logger.exception(
+            "Failed to delete memory store data for user %s",
+            user_email,
+        )

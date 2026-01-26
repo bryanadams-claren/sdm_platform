@@ -8,7 +8,6 @@ from django.conf import settings
 
 from sdm_platform.llmchat.tasks import send_llm_reply
 from sdm_platform.llmchat.utils.format import format_message
-from sdm_platform.llmchat.utils.format import format_thread_id
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +22,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # -- set the chat room to be specific to the user
         username = get_useremail_from_scope(self.scope)
         logger.info("User with name %s connected to chat", username)
-        if conv_id := (
-            self.scope.get("url_route", {}).get("kwargs", {}).get("conv_id", "")
-        ):
-            self.thread_name = format_thread_id(username, conv_id)
-        else:
-            self.thread_name = format_thread_id(username, "NoThreadIDAvailable")
+        # conversation_id is the UUID from the URL, use it directly as thread_name
+        conversation_id = (
+            self.scope.get("url_route", {}).get("kwargs", {}).get("conversation_id")
+        )
+        self.thread_name = str(conversation_id) if conversation_id else "NoThreadID"
         await self.channel_layer.group_add(
             self.thread_name,
             self.channel_name,
@@ -89,15 +87,12 @@ class StatusConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         """Connect to status group for the conversation"""
-        username = get_useremail_from_scope(self.scope)
-        if conv_id := (
-            self.scope.get("url_route", {}).get("kwargs", {}).get("conv_id", "")
-        ):
-            self.thread_name = format_thread_id(username, conv_id)
-            self.status_group = f"status_{self.thread_name}"
-        else:
-            self.thread_name = format_thread_id(username, "NoThreadIDAvailable")
-            self.status_group = f"status_{self.thread_name}"
+        # conversation_id is the UUID from the URL, use it directly as thread_name
+        conversation_id = (
+            self.scope.get("url_route", {}).get("kwargs", {}).get("conversation_id")
+        )
+        self.thread_name = str(conversation_id) if conversation_id else "NoThreadID"
+        self.status_group = f"status_{self.thread_name}"
 
         await self.channel_layer.group_add(
             self.status_group,

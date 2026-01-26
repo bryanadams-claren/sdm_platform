@@ -24,7 +24,3 @@ def format_message(
         "name": name,
         "citations": citations,
     }
-
-
-def format_thread_id(useremail: str, conv_id: str):
-    return f"chat_{useremail}_{conv_id}".replace("@", "_at_").replace(" ", "_")

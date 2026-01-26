@@ -197,7 +197,7 @@ function enableChatInput() {
 /** Fetch chat history by id */
 async function apiFetchChatHistory(convId) {
   const chat_hist = [];
-  await fetch("/chat/history/" + convId + "/")
+  await fetch("/conversation/" + convId + "/history/")
     .then((response) => response.json())
     .then((data) => {
       for (const msg of data.messages) {

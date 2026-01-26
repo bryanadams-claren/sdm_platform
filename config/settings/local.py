@@ -22,6 +22,12 @@ ALLOWED_HOSTS = [
 ]
 
 BASE_DOMAIN = env.str("DJANGO_BASE_DOMAIN", default="localhost")  # pyright: ignore[reportArgumentType]
+DEV_PORT = "8000"
+
+# Note: SESSION_COOKIE_DOMAIN and CSRF_COOKIE_DOMAIN are NOT set for local dev
+# because browsers don't reliably support ".localhost" for cookie domain sharing.
+# In production, these are set to share cookies across subdomains.
+# For local dev, the redirect after onboarding will stay on the subdomain.
 
 # CACHES
 # ------------------------------------------------------------------------------

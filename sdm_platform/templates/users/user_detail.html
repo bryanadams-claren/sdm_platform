@@ -84,7 +84,7 @@
               {% if conversations %}
                 <div class="list-group">
                   {% for conversation in conversations %}
-                    <a href="{% url 'chat_conversation' conversation.conv_id %}"
+                    <a href="{% url 'conversation' conversation.id %}"
                        class="list-group-item list-group-item-action">
                       <div class="d-flex w-100 justify-content-between align-items-center">
                         <div>
@@ -96,7 +96,7 @@
                             {% endif %}
                           </h5>
                           <p class="mb-0 text-muted small">
-                            <i class="bi bi-hash"></i> {{ conversation.conv_id }}
+                            <i class="bi bi-hash"></i> {{ conversation.id }}
                           </p>
                         </div>
                         <small class="text-muted">

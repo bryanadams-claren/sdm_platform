@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 class Conversation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    conv_id = models.CharField(max_length=255)
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -41,10 +40,6 @@ class Conversation(models.Model):
     # A human-friendly title (optional, for UI)
     title = models.CharField(max_length=255, default="")
 
-    # LangChain / checkpointing identifiers
-    thread_id = models.CharField(max_length=255, unique=True)
-    # This ties to LangChain's memory/checkpoint backend
-
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -54,7 +49,6 @@ class Conversation(models.Model):
 
     # Optional context
     system_prompt = models.TextField(blank=True, default="")  # initial instructions
-    model_name = models.CharField(max_length=100, default="gpt-4")  # which LLM used
 
     # Analytics fields for reporting
     message_count = models.PositiveIntegerField(
@@ -75,6 +69,15 @@ class Conversation(models.Model):
     def __str__(self):
         return f"Conversation: {self.user.email} / {self.title} ({self.id})"
 
+    @property
+    def thread_id(self) -> str:
+        """
+        Return the thread_id used for LangChain checkpointer.
+
+        This is simply the string representation of the UUID primary key.
+        """
+        return str(self.id)
+
 
 @receiver(post_delete, sender=Conversation)
 def delete_langchain_history_on_conversation_delete(
@@ -84,15 +87,9 @@ def delete_langchain_history_on_conversation_delete(
 ):
     """
     When a Conversation is deleted, also delete its LangChain/graph history
-    from the Postgres checkpointer using the conversation's thread_id.
+    from the Postgres checkpointer using the conversation's id as thread_id.
     """
-    thread_id = getattr(instance, "thread_id", None)
-    if not thread_id:
-        logger.error(
-            "Could not find thread_id in %s to delete LangChain history",
-            instance,
-        )
-        return
+    thread_id = str(instance.id)
 
     try:
         with get_postgres_checkpointer() as checkpointer:

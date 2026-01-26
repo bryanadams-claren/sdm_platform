@@ -10,7 +10,6 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse
 
 from sdm_platform.llmchat.tasks import send_ai_initiated_message
-from sdm_platform.llmchat.utils.format import format_thread_id
 from sdm_platform.memory.managers import ConversationPointManager
 from sdm_platform.memory.models import ConversationSummary
 from sdm_platform.utils.permissions import get_conversation_for_user
@@ -21,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 @login_required
-def conversation_points_api(request, conv_id):
+def conversation_points_api(request, conversation_id):
     """
     API endpoint to get conversation points for a specific conversation.
 
@@ -29,7 +28,7 @@ def conversation_points_api(request, conv_id):
 
     Args:
         request: Django request object
-        conv_id: Conversation ID
+        conversation_id: Conversation UUID
 
     Returns:
         JsonResponse with:
@@ -55,7 +54,7 @@ def conversation_points_api(request, conv_id):
     try:
         # Get the conversation (staff can view any conversation)
         conversation, owner = get_conversation_for_user(
-            request.user, conv_id, require_owner=True
+            request.user, conversation_id, require_owner=True
         )
 
         # Check if conversation has a journey
@@ -119,12 +118,14 @@ def conversation_points_api(request, conv_id):
         )
 
     except Exception as e:
-        logger.exception("Error fetching conversation points for conv_id=%s", conv_id)
+        logger.exception(
+            "Error fetching conversation points for conversation_id=%s", conversation_id
+        )
         return json_error(str(e), status=500, points=[])
 
 
 @login_required
-def initiate_conversation_point(request, conv_id, point_slug):
+def initiate_conversation_point(request, conversation_id, point_slug):
     """
     Initiate a conversation point by having the AI proactively ask about it.
 
@@ -133,7 +134,7 @@ def initiate_conversation_point(request, conv_id, point_slug):
 
     Args:
         request: Django request object
-        conv_id: Conversation ID
+        conversation_id: Conversation UUID
         point_slug: Slug of the conversation point to initiate
 
     Returns:
@@ -145,7 +146,10 @@ def initiate_conversation_point(request, conv_id, point_slug):
     try:
         # Get the conversation (staff can access any conversation)
         conversation, owner = get_conversation_for_user(
-            request.user, conv_id, select_related=["journey"], require_owner=True
+            request.user,
+            conversation_id,
+            select_related=["journey"],
+            require_owner=True,
         )
 
         if not conversation.journey:
@@ -170,9 +174,9 @@ def initiate_conversation_point(request, conv_id, point_slug):
         )
 
         # Send AI-initiated message via Celery task
-        thread_id = format_thread_id(owner.email, conv_id)
+        # thread_id is the conversation's UUID as a string
         send_ai_initiated_message.delay(  # pyright: ignore[reportCallIssue]
-            thread_id,
+            conversation.thread_id,
             request.user.email,
             conversation_point.slug,
             conversation.journey.slug,
@@ -185,19 +189,21 @@ def initiate_conversation_point(request, conv_id, point_slug):
 
     except Exception as e:
         logger.exception(
-            "Error initiating conversation point %s for conv_id=%s", point_slug, conv_id
+            "Error initiating conversation point %s for conversation_id=%s",
+            point_slug,
+            conversation_id,
         )
         return json_error(str(e), status=500)
 
 
 @login_required
-def conversation_summary_status(request, conv_id):
+def conversation_summary_status(request, conversation_id):
     """
     Check if conversation summary PDF is ready for download.
 
     Args:
         request: Django request object
-        conv_id: Conversation ID
+        conversation_id: Conversation UUID
 
     Returns:
         JsonResponse with:
@@ -205,36 +211,36 @@ def conversation_summary_status(request, conv_id):
             "success": true,
             "ready": true/false,
             "generated_at": "2024-01-15T10:30:00Z",  # if ready
-            "download_url": "/memory/conversation/{conv_id}/summary/download/"
+            "download_url": "/memory/conversation/{conversation_id}/summary/download/"
             # if ready
         }
     """
-    conversation = get_conversation_for_user(request.user, conv_id)
+    conversation = get_conversation_for_user(request.user, conversation_id)
 
     try:
         summary = conversation.summary
         return json_success(
             ready=True,
             generated_at=summary.generated_at.isoformat(),
-            download_url=reverse("memory:download_summary", args=[conv_id]),
+            download_url=reverse("memory:download_summary", args=[conversation_id]),
         )
     except ConversationSummary.DoesNotExist:
         return json_success(ready=False)
 
 
 @login_required
-def download_conversation_summary(request, conv_id):
+def download_conversation_summary(request, conversation_id):
     """
     Download the generated PDF summary.
 
     Args:
         request: Django request object
-        conv_id: Conversation ID
+        conversation_id: Conversation UUID
 
     Returns:
         FileResponse with PDF file
     """
-    conversation = get_conversation_for_user(request.user, conv_id)
+    conversation = get_conversation_for_user(request.user, conversation_id)
 
     try:
         summary = conversation.summary
@@ -244,13 +250,13 @@ def download_conversation_summary(request, conv_id):
     # Return file as download
     response = FileResponse(summary.file, content_type="application/pdf")
     response["Content-Disposition"] = (
-        f'attachment; filename="conversation_summary_{conv_id}.pdf"'
+        f'attachment; filename="conversation_summary_{conversation_id}.pdf"'
     )
     return response
 
 
 @login_required
-def generate_summary_now(request, conv_id):
+def generate_summary_now(request, conversation_id):
     """
     Manually trigger PDF summary generation.
 
@@ -259,7 +265,7 @@ def generate_summary_now(request, conv_id):
 
     Args:
         request: Django request object
-        conv_id: Conversation ID
+        conversation_id: Conversation UUID
 
     Returns:
         JsonResponse indicating success/failure
@@ -268,7 +274,7 @@ def generate_summary_now(request, conv_id):
         return json_error("POST required", status=405)
 
     try:
-        conversation = get_conversation_for_user(request.user, conv_id)
+        conversation = get_conversation_for_user(request.user, conversation_id)
 
         if not conversation.journey:
             return json_error("No journey associated with conversation")
@@ -278,7 +284,7 @@ def generate_summary_now(request, conv_id):
             existing_summary = conversation.summary
             existing_summary.file.delete(save=False)
             existing_summary.delete()
-            logger.info("Deleted existing summary for conversation %s", conv_id)
+            logger.info("Deleted existing summary for conversation %s", conversation_id)
         except ConversationSummary.DoesNotExist:
             pass
 
@@ -287,12 +293,17 @@ def generate_summary_now(request, conv_id):
             generate_conversation_summary_pdf,
         )
 
-        generate_conversation_summary_pdf.delay(conversation.conv_id)  # pyright: ignore[reportCallIssue]
+        generate_conversation_summary_pdf.delay(str(conversation.id))  # pyright: ignore[reportCallIssue]
 
-        logger.info("Triggered manual summary generation for conversation %s", conv_id)
+        logger.info(
+            "Triggered manual summary generation for conversation %s", conversation_id
+        )
 
         return json_success(message="Summary generation started")
 
     except Exception as e:
-        logger.exception("Error triggering summary generation for conv_id=%s", conv_id)
+        logger.exception(
+            "Error triggering summary generation for conversation_id=%s",
+            conversation_id,
+        )
         return json_error(str(e), status=500)

@@ -25,23 +25,27 @@ _CONVERSATION_NOT_FOUND = "Conversation not found"
 
 @login_required
 @ensure_csrf_cookie
-def conversation(request, conv_id=None):
+def conversation(request, conversation_id=None):
+    """
+    Main conversation view.
+
+    Args:
+        conversation_id: UUID of the conversation (optional)
+    """
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-            Conversation.objects.create(
+            conv = Conversation.objects.create(
                 user=request.user,
-                conv_id=conv_id,
-                title=data["title"],
-                thread_id=f"chat_{request.user}_{conv_id}".replace("@", "_at_"),
+                title=data.get("title", ""),
             )
-            return json_success()
+            return json_success(conversation_id=str(conv.id))
         except json.JSONDecodeError:
             return json_error("Invalid JSON")
     else:
         # For admins viewing a specific conversation, show that conversation
-        if conv_id and request.user.is_staff:
-            conv = Conversation.objects.filter(conv_id=conv_id).first()
+        if conversation_id and request.user.is_staff:
+            conv = Conversation.objects.filter(id=conversation_id).first()
             if conv:
                 conversations = Conversation.objects.filter(user=conv.user).order_by(
                     "-created_at",
@@ -51,36 +55,42 @@ def conversation(request, conv_id=None):
                     "llmchat/conversation.html",
                     {
                         "conversations": conversations,
-                        "active_conv_id": conv_id,
+                        "active_conversation_id": str(conversation_id),
                         "conversation_owner": conv.user,
                     },
                 )
             raise Http404(_CONVERSATION_NOT_FOUND)
 
         # Check access for non-admin users viewing a specific conversation
-        if conv_id and not can_access_conversation(request.user, conv_id):
+        if conversation_id and not can_access_conversation(
+            request.user, conversation_id
+        ):
             raise Http404(_CONVERSATION_NOT_FOUND)
 
         conversations = Conversation.objects.filter(user=request.user).order_by(
             "-created_at",
         )
         if not conversations:
-            conv_id = settings.DEFAULT_CONV_ID
-            Conversation.objects.create(
+            # Create a default conversation for new users
+            conv = Conversation.objects.create(
                 user=request.user,
-                conv_id=settings.DEFAULT_CONV_ID,
                 title="General Q&A",
-                thread_id=f"chat_{request.user}_{conv_id}".replace("@", "_at_"),
             )
             conversations = Conversation.objects.filter(user=request.user).order_by(
                 "-created_at",
             )
-        if not conv_id:
-            conv_id = conversations[0].conv_id
+            conversation_id = conv.id
+
+        if not conversation_id:
+            conversation_id = conversations[0].id
+
         return render(
             request,
             "llmchat/conversation.html",
-            {"conversations": conversations, "active_conv_id": conv_id},
+            {
+                "conversations": conversations,
+                "active_conversation_id": str(conversation_id),
+            },
         )
 
 
@@ -93,22 +103,26 @@ def _get_name(msg):
 
 
 @login_required
-def history(request, conv_id):
+def history(request, conversation_id):
+    """
+    Get conversation history.
+
+    Args:
+        conversation_id: UUID of the conversation
+    """
     # Check access permissions
-    if not can_access_conversation(request.user, conv_id):
+    if not can_access_conversation(request.user, conversation_id):
         raise Http404(_CONVERSATION_NOT_FOUND)
 
-    # For admins, get the thread_id from the actual conversation owner
-    if request.user.is_staff:
-        conv = Conversation.objects.filter(conv_id=conv_id).first()
-        if not conv:
-            raise Http404(_CONVERSATION_NOT_FOUND)
-        thread_id = conv.thread_id
-    else:
-        thread_id = f"chat_{request.user}_{conv_id}".replace("@", "_at_")
+    # Get the conversation
+    conv = Conversation.objects.filter(id=conversation_id).first()
+    if not conv:
+        raise Http404(_CONVERSATION_NOT_FOUND)
+
+    # Use the conversation's thread_id (which is str(id))
+    thread_id = conv.thread_id
 
     config = RunnableConfig(configurable={"thread_id": thread_id})
-    # you can also build a dict, like {"configurable": {"thread_id": thread_id}}
 
     data = {}
     with get_postgres_checkpointer() as checkpointer:

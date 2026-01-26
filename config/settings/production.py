@@ -47,6 +47,11 @@ if internal_ip.startswith("10."):
 # )  # type: ignore[call-overload]
 BASE_DOMAIN = env.str("DJANGO_BASE_DOMAIN", default="clarenhealth.com")  # pyright: ignore[reportArgumentType]
 
+# Session/CSRF cookie domain - share cookies across subdomains
+# The leading dot allows backpain.clarenhealth.com to share cookies with clarenhealth.com
+SESSION_COOKIE_DOMAIN = f".{BASE_DOMAIN}"
+CSRF_COOKIE_DOMAIN = f".{BASE_DOMAIN}"
+
 # DATABASES
 # ------------------------------------------------------------------------------
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)  # type: ignore[call-overload]

@@ -50,7 +50,7 @@ class ConversationSummaryAdmin(admin.ModelAdmin):
         "generated_at",
     )
     list_filter = ("generated_at",)
-    search_fields = ("conversation__conv_id", "conversation__user__email")
+    search_fields = ("conversation__id", "conversation__user__email")
     readonly_fields = ("id", "conversation", "generated_at", "narrative_summary")
     ordering = ("-generated_at",)
 

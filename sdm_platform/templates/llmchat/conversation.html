@@ -19,10 +19,10 @@
     <div class="sidebar">
       <div class="chat-list" id="chatList">
         {% for conv in conversations %}
-          {% if conv.chat_id == active_chat_id %}
-            <div class="chat-item active" data-id="{{ conv.conv_id }}">{{ conv.title|default:"Untitled Conversation" }}</div>
+          {% if conv.id|stringformat:"s" == active_conversation_id %}
+            <div class="chat-item active" data-id="{{ conv.id }}">{{ conv.title|default:"Untitled Conversation" }}</div>
           {% else %}
-            <div class="chat-item" data-id="{{ conv.conv_id }}">{{ conv.title|default:"Untitled Conversation" }}</div>
+            <div class="chat-item" data-id="{{ conv.id }}">{{ conv.title|default:"Untitled Conversation" }}</div>
           {% endif %}
         {% endfor %}
       </div>
@@ -46,6 +46,7 @@
         </a>
       {% else %}
         <a href="{% url 'users:detail' request.user.pk %}"
+           id="userProfileLink"
            class="user-info d-flex align-items-center text-decoration-none color-inherit">
           {% if request.user.avatar %}
             <img src="{{ request.user.avatar.url }}"

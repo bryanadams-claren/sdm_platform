@@ -1,4 +1,4 @@
-# ruff: noqa: PT027, S106
+# ruff: noqa: S106
 # ... ignore the assertion stuff and also the hardcoded passwords
 # pyright: reportGeneralTypeIssues=false, reportArgumentType=false
 # ... the channel stuff
@@ -30,7 +30,6 @@ from sdm_platform.llmchat.models import Conversation
 from sdm_platform.llmchat.tasks import send_llm_reply
 from sdm_platform.llmchat.utils.chat_history import get_chat_history
 from sdm_platform.llmchat.utils.format import format_message
-from sdm_platform.llmchat.utils.format import format_thread_id
 from sdm_platform.llmchat.utils.graphs import get_compiled_graph
 from sdm_platform.llmchat.utils.graphs import get_postgres_checkpointer
 from sdm_platform.memory.managers import UserProfileManager
@@ -51,25 +50,21 @@ class ConversationModelTest(TestCase):
         """Test creating a conversation"""
         conv = Conversation.objects.create(
             user=self.user,
-            conv_id="test_conv",
             title="Test Conversation",
-            thread_id="chat_test_example.com_test_conv",
         )
 
         self.assertIsNotNone(conv.id)
         self.assertEqual(conv.user, self.user)
-        self.assertEqual(conv.conv_id, "test_conv")
         self.assertEqual(conv.title, "Test Conversation")
         self.assertTrue(conv.is_active)
-        self.assertEqual(conv.model_name, "gpt-4")
+        # thread_id property returns UUID as string
+        self.assertEqual(conv.thread_id, str(conv.id))
 
     def test_conversation_str_representation(self):
         """Test the string representation of a conversation"""
         conv = Conversation.objects.create(
             user=self.user,
-            conv_id="test_conv",
             title="Test Title",
-            thread_id="chat_test_example.com_test_conv",
         )
 
         expected = f"Conversation: {self.user.email} / Test Title ({conv.id})"
@@ -79,21 +74,16 @@ class ConversationModelTest(TestCase):
         """Test default values for conversation fields"""
         conv = Conversation.objects.create(
             user=self.user,
-            conv_id="test_conv",
-            thread_id="chat_test_example.com_test_conv",
         )
 
         self.assertEqual(conv.title, "")
         self.assertEqual(conv.system_prompt, "")
-        self.assertEqual(conv.model_name, "gpt-4")
         self.assertTrue(conv.is_active)
 
     def test_conversation_updated_at_changes(self):
         """Test that updated_at changes when conversation is saved"""
         conv = Conversation.objects.create(
             user=self.user,
-            conv_id="test_conv",
-            thread_id="chat_test_example.com_test_conv",
         )
 
         original_updated_at = conv.updated_at
@@ -101,22 +91,6 @@ class ConversationModelTest(TestCase):
         conv.save()
 
         self.assertGreater(conv.updated_at, original_updated_at)
-
-    def test_conversation_unique_thread_id(self):
-        """Test that thread_id must be unique"""
-        Conversation.objects.create(
-            user=self.user,
-            conv_id="conv1",
-            thread_id="unique_thread_id",
-        )
-
-        # Creating another conversation with the same thread_id should fail
-        with self.assertRaises(Exception):  # IntegrityError in production  # noqa: B017
-            Conversation.objects.create(
-                user=self.user,
-                conv_id="conv2",
-                thread_id="unique_thread_id",
-            )
 
     @patch("sdm_platform.llmchat.models.get_postgres_checkpointer")
     def test_conversation_deletion_triggers_checkpointer_cleanup(
@@ -129,8 +103,6 @@ class ConversationModelTest(TestCase):
 
         conv = Conversation.objects.create(
             user=self.user,
-            conv_id="test_conv",
-            thread_id="chat_test_example.com_test_conv",
         )
 
         thread_id = conv.thread_id
@@ -154,7 +126,7 @@ class ConversationViewTest(TestCase):
     def test_conversation_view_requires_login(self):
         """Test that conversation view requires authentication"""
         self.client.logout()
-        response = self.client.get(reverse("chat_conversation_top"))
+        response = self.client.get(reverse("conversation_list"))
 
         # Should redirect to login
         self.assertEqual(response.status_code, 302)
@@ -162,78 +134,39 @@ class ConversationViewTest(TestCase):
 
     def test_conversation_view_creates_default_conversation(self):
         """Test that accessing conversation view creates a default conversation"""
-        response = self.client.get(reverse("chat_conversation_top"))
+        response = self.client.get(reverse("conversation_list"))
 
         self.assertEqual(response.status_code, 200)
         conversations = Conversation.objects.filter(user=self.user)
         self.assertEqual(conversations.count(), 1)
-        self.assertEqual(conversations[0].conv_id, settings.DEFAULT_CONV_ID)
         self.assertEqual(conversations[0].title, "General Q&A")
 
     def test_conversation_view_with_existing_conversations(self):
         """Test conversation view when conversations already exist"""
         conv1 = Conversation.objects.create(
             user=self.user,
-            conv_id="conv1",
             title="First Conversation",
-            thread_id="chat_test_example.com_conv1",
         )
 
-        response = self.client.get(reverse("chat_conversation_top"))
+        response = self.client.get(reverse("conversation_list"))
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("conversations", response.context)
-        self.assertEqual(response.context["active_conv_id"], conv1.conv_id)
+        self.assertEqual(response.context["active_conversation_id"], str(conv1.id))
 
-    def test_conversation_view_with_specific_conv_id(self):
-        """Test conversation view with a specific conv_id"""
-        conv1 = Conversation.objects.create(  # noqa: F841
+    def test_conversation_view_with_specific_conversation_id(self):
+        """Test conversation view with a specific conversation_id"""
+        conv1 = Conversation.objects.create(
             user=self.user,
-            conv_id="conv1",
             title="First Conversation",
-            thread_id="chat_test_example.com_conv1",
         )
 
         response = self.client.get(
-            reverse("chat_conversation", kwargs={"conv_id": "conv1"}),
+            reverse("conversation", kwargs={"conversation_id": conv1.id}),
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["active_conv_id"], "conv1")
-
-    def test_conversation_create_via_post(self):
-        """Test creating a conversation via POST"""
-        data = {
-            "title": "New Conversation",
-        }
-
-        response = self.client.post(
-            reverse("chat_conversation", kwargs={"conv_id": "new_conv"}),
-            data=json.dumps(data),
-            content_type="application/json",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        response_data = json.loads(response.content)
-        self.assertTrue(response_data["success"])
-
-        # Verify conversation was created
-        conv = Conversation.objects.get(conv_id="new_conv")
-        self.assertEqual(conv.title, "New Conversation")
-        self.assertEqual(conv.user, self.user)
-
-    def test_conversation_create_with_invalid_json(self):
-        """Test creating a conversation with invalid JSON"""
-        response = self.client.post(
-            reverse("chat_conversation", kwargs={"conv_id": "new_conv"}),
-            data="invalid json",
-            content_type="application/json",
-        )
-
-        self.assertEqual(response.status_code, 400)
-        response_data = json.loads(response.content)
-        self.assertFalse(response_data["success"])
-        self.assertIn("error", response_data)
+        self.assertEqual(response.context["active_conversation_id"], str(conv1.id))
 
 
 class HistoryViewTest(TestCase):
@@ -249,16 +182,16 @@ class HistoryViewTest(TestCase):
 
         self.conversation = Conversation.objects.create(
             user=self.user,
-            conv_id="test_conv",
             title="Test Conversation",
-            thread_id="chat_test_example.com_test_conv",
         )
 
     def test_history_view_requires_login(self):
         """Test that history view requires authentication"""
         self.client.logout()
         response = self.client.get(
-            reverse("chat_history", kwargs={"conv_id": "test_conv"}),
+            reverse(
+                "conversation_history", kwargs={"conversation_id": self.conversation.id}
+            ),
         )
 
         # Should redirect to login
@@ -314,7 +247,9 @@ class HistoryViewTest(TestCase):
         ]
 
         response = self.client.get(
-            reverse("chat_history", kwargs={"conv_id": "test_conv"}),
+            reverse(
+                "conversation_history", kwargs={"conversation_id": self.conversation.id}
+            ),
         )
 
         self.assertEqual(response.status_code, 200)
@@ -404,16 +339,6 @@ class FormatUtilsTest(TestCase):
 
         self.assertEqual(result["citations"], citations)
 
-    def test_format_thread_id(self):
-        """Test formatting thread IDs"""
-        result = format_thread_id("user@example.com", "conv123")
-        self.assertEqual(result, "chat_user_at_example.com_conv123")
-
-    def test_format_thread_id_with_spaces(self):
-        """Test formatting thread IDs with spaces"""
-        result = format_thread_id("user with spaces@example.com", "conv 123")
-        self.assertEqual(result, "chat_user_with_spaces_at_example.com_conv_123")
-
 
 class ChatHistoryUtilsTest(TestCase):
     """Test the chat history utility functions"""
@@ -491,9 +416,7 @@ class TasksTest(TestCase):
         )
         self.conversation = Conversation.objects.create(
             user=self.user,
-            conv_id="test_conv",
             title="Test Conversation",
-            thread_id="chat_test_example.com_test_conv",
         )
 
     @patch("sdm_platform.llmchat.tasks.async_to_sync")
@@ -533,9 +456,9 @@ class TasksTest(TestCase):
         # Mock async_to_sync to just call the function synchronously
         mock_async_to_sync.side_effect = lambda f: lambda *args, **kwargs: None
 
-        # Call the task
+        # Call the task - thread_name is now the conversation UUID
         send_llm_reply(
-            thread_name="chat_test_example.com_test_conv",
+            thread_name=str(self.conversation.id),
             username="test@example.com",
             user_input="Hello",
         )
@@ -604,9 +527,9 @@ class TasksTest(TestCase):
 
         mock_async_to_sync.side_effect = capture_call
 
-        # Call the task
+        # Call the task - thread_name is now the conversation UUID
         send_llm_reply(
-            thread_name="chat_test_example.com_test_conv",
+            thread_name=str(self.conversation.id),
             username="test@example.com",
             user_input="Tell me about something",
         )
@@ -650,9 +573,9 @@ class TasksTest(TestCase):
         # Mock async_to_sync
         mock_async_to_sync.side_effect = lambda f: lambda *args, **kwargs: None
 
-        # Call the task
+        # Call the task - thread_name is now the conversation UUID
         send_llm_reply(
-            thread_name="chat_test_example.com_test_conv",
+            thread_name=str(self.conversation.id),
             username="test@example.com",
             user_input="Hello",
         )
@@ -666,17 +589,21 @@ class URLConfigTest(TestCase):
 
     def test_url_patterns_exist(self):
         """Test that expected URL patterns are configured"""
-        # Test conversation top level URL (with /chat/ prefix from main urls.py)
-        url = reverse("chat_conversation_top")
-        self.assertEqual(url, "/chat/conversation/")
+        import uuid  # noqa: PLC0415
 
-        # Test conversation with conv_id
-        url = reverse("chat_conversation", kwargs={"conv_id": "test123"})
-        self.assertEqual(url, "/chat/conversation/test123/")
+        test_uuid = uuid.uuid4()
+
+        # Test conversation top level URL
+        url = reverse("conversation_list")
+        self.assertEqual(url, "/conversation/")
+
+        # Test conversation with conversation_id (UUID)
+        url = reverse("conversation", kwargs={"conversation_id": test_uuid})
+        self.assertEqual(url, f"/conversation/{test_uuid}/")
 
         # Test history URL
-        url = reverse("chat_history", kwargs={"conv_id": "test123"})
-        self.assertEqual(url, "/chat/history/test123/")
+        url = reverse("conversation_history", kwargs={"conversation_id": test_uuid})
+        self.assertEqual(url, f"/conversation/{test_uuid}/history/")
 
 
 class ChatConsumerTest(TransactionTestCase):
@@ -689,30 +616,30 @@ class ChatConsumerTest(TransactionTestCase):
         )
         self.conversation = Conversation.objects.create(
             user=self.user,
-            conv_id="test_conv",
             title="Test Conversation",
-            thread_id="chat_test_example.com_test_conv",
         )
 
     @patch("sdm_platform.llmchat.consumers.send_llm_reply")
     async def test_consumer_connect(self, mock_send_llm_reply):
         """Test WebSocket connection"""
 
-        # Get user in async-safe way
+        # Get user and conversation in async-safe way
         @database_sync_to_async
-        def get_user():
-            return User.objects.get(email="test@example.com")
+        def get_user_and_conv():
+            user = User.objects.get(email="test@example.com")
+            conv = Conversation.objects.get(user=user)
+            return user, conv.id
 
-        user = await get_user()
+        user, conv_id = await get_user_and_conv()
 
         # Create communicator with user in scope
         communicator = WebsocketCommunicator(
             ChatConsumer.as_asgi(),
-            "/ws/chat/test_conv/",
+            f"/ws/chat/{conv_id}/",
         )
         communicator.scope["user"] = user
         communicator.scope["url_route"] = {
-            "kwargs": {"conv_id": "test_conv"},
+            "kwargs": {"conversation_id": conv_id},
         }
 
         # Connect
@@ -726,21 +653,23 @@ class ChatConsumerTest(TransactionTestCase):
     async def test_consumer_receive_message(self, mock_send_llm_reply):
         """Test receiving a message through WebSocket"""
 
-        # Get user in async-safe way
+        # Get user and conversation in async-safe way
         @database_sync_to_async
-        def get_user():
-            return User.objects.get(email="test@example.com")
+        def get_user_and_conv():
+            user = User.objects.get(email="test@example.com")
+            conv = Conversation.objects.get(user=user)
+            return user, conv.id
 
-        user = await get_user()
+        user, conv_id = await get_user_and_conv()
 
         # Create communicator
         communicator = WebsocketCommunicator(
             ChatConsumer.as_asgi(),
-            "/ws/chat/test_conv/",
+            f"/ws/chat/{conv_id}/",
         )
         communicator.scope["user"] = user
         communicator.scope["url_route"] = {
-            "kwargs": {"conv_id": "test_conv"},
+            "kwargs": {"conversation_id": conv_id},
         }
 
         # Connect
@@ -763,9 +692,9 @@ class ChatConsumerTest(TransactionTestCase):
         self.assertIn("timestamp", response)
         self.assertEqual(response["citations"], [])
 
-        # Verify Celery task was called
+        # Verify Celery task was called with the UUID as thread_name
         mock_send_llm_reply.delay.assert_called_once_with(
-            "chat_test_at_example.com_test_conv",
+            str(conv_id),
             "test@example.com",
             "Hello, bot!",
         )
@@ -777,21 +706,23 @@ class ChatConsumerTest(TransactionTestCase):
     async def test_consumer_ping_pong(self, mock_send_llm_reply):
         """Test ping/pong functionality"""
 
-        # Get user in async-safe way
+        # Get user and conversation in async-safe way
         @database_sync_to_async
-        def get_user():
-            return User.objects.get(email="test@example.com")
+        def get_user_and_conv():
+            user = User.objects.get(email="test@example.com")
+            conv = Conversation.objects.get(user=user)
+            return user, conv.id
 
-        user = await get_user()
+        user, conv_id = await get_user_and_conv()
 
         # Create communicator
         communicator = WebsocketCommunicator(
             ChatConsumer.as_asgi(),
-            "/ws/chat/test_conv/",
+            f"/ws/chat/{conv_id}/",
         )
         communicator.scope["user"] = user
         communicator.scope["url_route"] = {
-            "kwargs": {"conv_id": "test_conv"},
+            "kwargs": {"conversation_id": conv_id},
         }
 
         # Connect
@@ -815,8 +746,8 @@ class ChatConsumerTest(TransactionTestCase):
         await communicator.disconnect()
 
     @patch("sdm_platform.llmchat.consumers.send_llm_reply")
-    async def test_consumer_without_conv_id(self, mock_send_llm_reply):
-        """Test WebSocket connection without conv_id"""
+    async def test_consumer_without_conversation_id(self, mock_send_llm_reply):
+        """Test WebSocket connection without conversation_id"""
 
         # Get user in async-safe way
         @database_sync_to_async
@@ -825,14 +756,14 @@ class ChatConsumerTest(TransactionTestCase):
 
         user = await get_user()
 
-        # Create communicator without conv_id
+        # Create communicator without conversation_id
         communicator = WebsocketCommunicator(
             ChatConsumer.as_asgi(),
             "/ws/chat/",
         )
         communicator.scope["user"] = user
         communicator.scope["url_route"] = {
-            "kwargs": {},  # No conv_id
+            "kwargs": {},  # No conversation_id
         }
 
         # Connect
@@ -853,7 +784,7 @@ class ChatConsumerTest(TransactionTestCase):
         # Verify task was called with fallback thread name
         mock_send_llm_reply.delay.assert_called_once()
         call_args = mock_send_llm_reply.delay.call_args[0]
-        self.assertIn("NoThreadIDAvailable", call_args[0])
+        self.assertIn("NoThreadID", call_args[0])
 
         # Disconnect
         await communicator.disconnect()
@@ -862,21 +793,23 @@ class ChatConsumerTest(TransactionTestCase):
     async def test_consumer_chat_reply(self, mock_send_llm_reply):
         """Test receiving a bot reply through the consumer"""
 
-        # Get user in async-safe way
+        # Get user and conversation in async-safe way
         @database_sync_to_async
-        def get_user():
-            return User.objects.get(email="test@example.com")
+        def get_user_and_conv():
+            user = User.objects.get(email="test@example.com")
+            conv = Conversation.objects.get(user=user)
+            return user, conv.id
 
-        user = await get_user()
+        user, conv_id = await get_user_and_conv()
 
         # Create communicator
         communicator = WebsocketCommunicator(
             ChatConsumer.as_asgi(),
-            "/ws/chat/test_conv/",
+            f"/ws/chat/{conv_id}/",
         )
         communicator.scope["user"] = user
         communicator.scope["url_route"] = {
-            "kwargs": {"conv_id": "test_conv"},
+            "kwargs": {"conversation_id": conv_id},
         }
 
         # Connect
@@ -894,10 +827,11 @@ class ChatConsumerTest(TransactionTestCase):
         )
 
         # Get the channel layer directly
+        # thread_name is now just the UUID string
         channel_layer = get_channel_layer()
         if channel_layer:
             await channel_layer.group_send(
-                "chat_test_at_example.com_test_conv",
+                str(conv_id),
                 {
                     "type": "chat.reply",
                     "content": json.dumps(bot_message),

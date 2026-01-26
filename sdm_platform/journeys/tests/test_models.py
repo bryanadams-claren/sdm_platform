@@ -301,8 +301,6 @@ class JourneyResponseModelTest(TestCase):
         """Test linking a conversation to a journey response"""
         conversation = Conversation.objects.create(
             user=self.user,
-            conv_id="backpain-test",
-            thread_id="chat_test_example.com_backpain",
         )
 
         response = JourneyResponse.objects.create(

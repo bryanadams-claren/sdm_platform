@@ -134,4 +134,4 @@ class ConversationSummary(models.Model):
         verbose_name_plural = "Conversation summaries"
 
     def __str__(self):
-        return f"Summary for {self.conversation.conv_id}"
+        return f"Summary for {self.conversation.id}"

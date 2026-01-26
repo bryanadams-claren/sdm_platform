@@ -131,7 +131,7 @@ class ConversationSummaryService:
             selected_option=selected_option,
             narrative_summary=narrative_summary,
             generated_at=datetime.now(UTC),
-            conversation_id=self.conversation.conv_id,
+            conversation_id=str(self.conversation.id),
         )
 
     def get_point_summaries(self) -> list[PointSummary]:

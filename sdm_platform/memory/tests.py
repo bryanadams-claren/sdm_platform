@@ -1558,7 +1558,6 @@ class ConversationSummaryServiceTest(TestCase):
         self.conversation = Conversation.objects.create(
             user=self.user,
             journey=self.journey,
-            conv_id="test-summary-conv",
         )
 
         # Create conversation points
@@ -1910,7 +1909,6 @@ class ConversationSummaryViewsTest(TestCase):
         self.conversation = Conversation.objects.create(
             user=self.user,
             journey=self.journey,
-            conv_id="test-views-conv",
         )
 
         self.client.force_login(self.user)
@@ -1921,7 +1919,7 @@ class ConversationSummaryViewsTest(TestCase):
 
         url = reverse(
             "memory:summary_status",
-            args=[str(self.conversation.conv_id)],
+            args=[str(self.conversation.id)],
         )
         response = self.client.get(url)
 
@@ -1946,7 +1944,7 @@ class ConversationSummaryViewsTest(TestCase):
 
         url = reverse(
             "memory:summary_status",
-            args=[str(self.conversation.conv_id)],
+            args=[str(self.conversation.id)],
         )
         response = self.client.get(url)
 
@@ -1965,7 +1963,7 @@ class ConversationSummaryViewsTest(TestCase):
 
         url = reverse(
             "memory:summary_status",
-            args=[str(self.conversation.conv_id)],
+            args=[str(self.conversation.id)],
         )
         response = self.client.get(url)
 
@@ -1981,7 +1979,7 @@ class ConversationSummaryViewsTest(TestCase):
 
         url = reverse(
             "memory:summary_status",
-            args=[str(self.conversation.conv_id)],
+            args=[str(self.conversation.id)],
         )
         response = self.client.get(url)
 
@@ -2004,7 +2002,7 @@ class ConversationSummaryViewsTest(TestCase):
 
         url = reverse(
             "memory:download_summary",
-            args=[str(self.conversation.conv_id)],
+            args=[str(self.conversation.id)],
         )
         response = self.client.get(url)
 
@@ -2018,7 +2016,7 @@ class ConversationSummaryViewsTest(TestCase):
 
         url = reverse(
             "memory:download_summary",
-            args=[str(self.conversation.conv_id)],
+            args=[str(self.conversation.id)],
         )
         response = self.client.get(url)
 
@@ -2035,7 +2033,7 @@ class ConversationSummaryViewsTest(TestCase):
 
         url = reverse(
             "memory:download_summary",
-            args=[str(self.conversation.conv_id)],
+            args=[str(self.conversation.id)],
         )
         response = self.client.get(url)
 
@@ -2061,7 +2059,7 @@ class ConversationSummaryViewsTest(TestCase):
 
         url = reverse(
             "memory:download_summary",
-            args=[str(self.conversation.conv_id)],
+            args=[str(self.conversation.id)],
         )
         response = self.client.get(url)
 
@@ -2095,7 +2093,6 @@ class ConversationSummaryTaskTest(TestCase):
         self.conversation = Conversation.objects.create(
             user=self.user,
             journey=self.journey,
-            conv_id="test-task-conv",
         )
 
         # Create JourneyResponse linking conversation
@@ -2142,7 +2139,7 @@ class ConversationSummaryTaskTest(TestCase):
             mock_service_class.return_value = mock_service
 
             # Run task
-            result = generate_conversation_summary_pdf(str(self.conversation.conv_id))
+            result = generate_conversation_summary_pdf(str(self.conversation.id))
 
             # Verify ConversationSummary was created
             assert ConversationSummary.objects.filter(
@@ -2167,7 +2164,7 @@ class ConversationSummaryTaskTest(TestCase):
         )
 
         # Run task
-        result = generate_conversation_summary_pdf(str(self.conversation.conv_id))
+        result = generate_conversation_summary_pdf(str(self.conversation.id))
 
         # Should return existing summary ID
         assert result == str(existing_summary.id)
@@ -2223,7 +2220,7 @@ class ConversationSummaryTaskTest(TestCase):
                 )
 
                 # Task SHOULD be triggered
-                mock_task.assert_called_once_with(str(self.conversation.conv_id))
+                mock_task.assert_called_once_with(str(self.conversation.id))
 
     def test_check_and_trigger_skips_if_summary_exists(self):
         """Test check_and_trigger skips if summary already exists."""

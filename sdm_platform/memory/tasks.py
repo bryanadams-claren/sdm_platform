@@ -499,7 +499,7 @@ def generate_conversation_summary_pdf(self, conversation_id: str) -> str:
     or manually via the "Summarize Now" button.
 
     Args:
-        conversation_id: Conversation conv_id
+        conversation_id: Conversation UUID as string
 
     Returns:
         ConversationSummary ID as string
@@ -519,7 +519,7 @@ def generate_conversation_summary_pdf(self, conversation_id: str) -> str:
     )
 
     try:
-        conversation = Conversation.objects.get(conv_id=conversation_id)
+        conversation = Conversation.objects.get(id=conversation_id)
 
         # Check if summary already exists (manual generation deletes first)
         if hasattr(conversation, "summary"):
@@ -528,12 +528,12 @@ def generate_conversation_summary_pdf(self, conversation_id: str) -> str:
                 conversation_id,
             )
             # Still notify frontend in case they're waiting
-            if conversation.thread_id:
-                from sdm_platform.llmchat.utils.status import (  # noqa: PLC0415
-                    send_summary_complete,
-                )
+            # thread_id is the UUID as a string, same as conversation_id
+            from sdm_platform.llmchat.utils.status import (  # noqa: PLC0415
+                send_summary_complete,
+            )
 
-                send_summary_complete(conversation.thread_id)
+            send_summary_complete(conversation.thread_id)
             return str(conversation.summary.id)
 
         # Gather data
@@ -562,12 +562,11 @@ def generate_conversation_summary_pdf(self, conversation_id: str) -> str:
         logger.info("Generated summary PDF for conversation %s", conversation_id)
 
         # Notify frontend that summary is ready
-        if conversation.thread_id:
-            from sdm_platform.llmchat.utils.status import (  # noqa: PLC0415
-                send_summary_complete,
-            )
+        from sdm_platform.llmchat.utils.status import (  # noqa: PLC0415
+            send_summary_complete,
+        )
 
-            send_summary_complete(conversation.thread_id)
+        send_summary_complete(conversation.thread_id)
 
         return str(summary.id)
 
@@ -625,9 +624,9 @@ def check_and_trigger_summary_generation(
         if service.is_complete():
             logger.info(
                 "All points addressed for %s, triggering PDF generation",
-                conversation.conv_id,
+                conversation.id,
             )
-            generate_conversation_summary_pdf.delay(conversation.conv_id)  # pyright: ignore[reportCallIssue]
+            generate_conversation_summary_pdf.delay(str(conversation.id))  # pyright: ignore[reportCallIssue]
             return True
         return False  # noqa: TRY300
     except (User.DoesNotExist, Journey.DoesNotExist, JourneyResponse.DoesNotExist):

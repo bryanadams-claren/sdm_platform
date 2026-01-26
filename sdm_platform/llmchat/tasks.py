@@ -125,7 +125,8 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
     try:
         # -- get the thread / conversation id elsewhere
         logger.info("Launching LLM reply for thread name %s", thread_name)
-        conversation = Conversation.objects.get(thread_id=thread_name)
+        # thread_name is the conversation UUID as a string
+        conversation = Conversation.objects.get(id=thread_name)
 
         # Get journey slug if this conversation is linked to a journey
         # Get journey slug directly from conversation
@@ -161,7 +162,7 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
         # Send reply if LLM responded (memory extraction is handled by graph node)
         if reply["messages"][-1].type == "ai":
             # Update conversation analytics (user message + AI response = 2 messages)
-            Conversation.objects.filter(thread_id=thread_name).update(
+            Conversation.objects.filter(id=thread_name).update(
                 message_count=F("message_count") + 2,
                 last_message_at=timezone.now(),
             )
@@ -215,8 +216,9 @@ def send_ai_initiated_message(
 
     try:
         logger.info("Sending AI-initiated message for thread %s", thread_name)
+        # thread_name is the conversation UUID as a string
         conversation = Conversation.objects.select_related("journey").get(
-            thread_id=thread_name
+            id=thread_name
         )
 
         # Get the conversation point with its elicitation guidance
@@ -324,7 +326,7 @@ def send_ai_initiated_message(
 
         # Update conversation analytics (AI-initiated message = 1 message)
         now = timezone.now()
-        Conversation.objects.filter(thread_id=thread_name).update(
+        Conversation.objects.filter(id=thread_name).update(
             message_count=F("message_count") + 1,
             last_message_at=now,
         )

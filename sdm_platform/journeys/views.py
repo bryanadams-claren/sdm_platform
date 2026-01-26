@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import date
 
+from django.conf import settings
 from django.contrib.auth import login
 from django.db import transaction
 from django.http import HttpResponse
@@ -13,7 +14,6 @@ from django.views.decorators.http import require_http_methods
 
 from sdm_platform.llmchat.models import Conversation
 from sdm_platform.llmchat.tasks import send_ai_initiated_message
-from sdm_platform.llmchat.utils.format import format_thread_id
 from sdm_platform.memory.managers import UserProfileManager
 from sdm_platform.users.emails import send_welcome_email
 from sdm_platform.users.models import User
@@ -24,6 +24,23 @@ from .models import Journey
 from .models import JourneyResponse
 
 logger = logging.getLogger(__name__)
+
+
+def _get_conversation_url(request, path: str) -> str:
+    """
+    Build a URL for the conversation page.
+
+    In production: redirects to root domain (https://clarenhealth.com/path/)
+    In development: stays on current host (browsers don't share localhost cookies)
+    """
+    if settings.DEBUG:
+        # In development, stay on the current host to preserve session cookies
+        # (browsers don't reliably support ".localhost" cookie domain sharing)
+        return path
+
+    # In production, redirect to root domain (cookies shared via SESSION_COOKIE_DOMAIN)
+    base_domain = getattr(settings, "BASE_DOMAIN", "clarenhealth.com")
+    return f"https://{base_domain}{path}"
 
 
 def journey_landing(request, journey_slug):
@@ -227,22 +244,21 @@ def handle_onboarding_submission(request, journey):  # noqa: C901
         )
 
         # Step 3: Create conversation with context
-        conv_id = f"{journey.slug}-{user.id!s}"
-        thread_id = format_thread_id(user.email, conv_id)
-
         # Build system prompt with responses
         system_prompt = journey.build_system_prompt(responses_dict)
 
-        conversation, conversation_created = Conversation.objects.get_or_create(
-            user=user,
-            conv_id=conv_id,
-            defaults={
-                "journey": journey,  # Link conversation directly to journey
-                "title": f"{journey.title} - {user.name}",
-                "thread_id": thread_id,
-                "system_prompt": system_prompt,
-            },
-        )
+        # Check if user already has a conversation for this journey
+        conversation = Conversation.objects.filter(user=user, journey=journey).first()
+        conversation_created = False
+
+        if not conversation:
+            conversation = Conversation.objects.create(
+                user=user,
+                journey=journey,
+                title=f"{journey.title} - {user.name}",
+                system_prompt=system_prompt,
+            )
+            conversation_created = True
 
         # Link conversation to journey response
         journey_response.conversation = conversation
@@ -261,7 +277,7 @@ def handle_onboarding_submission(request, journey):  # noqa: C901
             if first_point:
                 # Send AI-initiated message to start the conversation
                 send_ai_initiated_message.delay(  # pyright: ignore[reportCallIssue]
-                    thread_id,
+                    conversation.thread_id,
                     user.email,
                     first_point.slug,
                     journey.slug,
@@ -273,4 +289,7 @@ def handle_onboarding_submission(request, journey):  # noqa: C901
                 )
 
         # Step 5: Return success with redirect URL
-        return json_success(redirect_url=f"/chat/conversation/{conv_id}/")
+        redirect_url = _get_conversation_url(
+            request, f"/conversation/{conversation.id}/"
+        )
+        return json_success(redirect_url=redirect_url)

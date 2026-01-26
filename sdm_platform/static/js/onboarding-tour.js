@@ -50,6 +50,16 @@ const TOUR_STEPS = [
       align: "center",
     },
   },
+  {
+    element: "#userProfileLink",
+    popover: {
+      title: "Your Profile",
+      description:
+        "Click here to view your profile. You can set a password to save your progress and return to your conversation later from any device.",
+      side: "top",
+      align: "center",
+    },
+  },
 ];
 
 /**
@@ -125,8 +135,9 @@ function initTour() {
     const pointsExist = document.querySelector(".conversation-point-item");
     const guideBtn = document.getElementById("guideMeBtn");
     const summarizeBtn = document.getElementById("summarizeNowBtn");
+    const profileLink = document.getElementById("userProfileLink");
 
-    if (pointsExist && guideBtn && summarizeBtn) {
+    if (pointsExist && guideBtn && summarizeBtn && profileLink) {
       clearInterval(checkInterval);
       console.log("[OnboardingTour] All elements found, starting tour");
       startTour();

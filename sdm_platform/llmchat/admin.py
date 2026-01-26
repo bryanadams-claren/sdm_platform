@@ -18,9 +18,10 @@ class ConversationAdmin(ModelAdmin):
         "view_conversation_link",
     )
     list_filter = ("is_active",)
-    search_fields = ("title", "conv_id", "thread_id", "user__username", "user__email")
+    search_fields = ("title", "id", "user__username", "user__email")
     raw_id_fields = ("user",)
     readonly_fields = (
+        "id",
         "created_at",
         "updated_at",
         "message_count",
@@ -30,5 +31,5 @@ class ConversationAdmin(ModelAdmin):
 
     @admin.display(description="View Conversation")
     def view_conversation_link(self, obj):
-        url = reverse("chat_conversation", kwargs={"conv_id": obj.conv_id})
+        url = reverse("conversation", kwargs={"conversation_id": obj.id})
         return format_html('<a href="{}" target="_blank">View Conversation</a>', url)

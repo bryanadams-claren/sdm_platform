@@ -13,14 +13,14 @@ _CONVERSATION_NOT_FOUND = "Conversation not found"
 
 
 def get_conversation_for_user(
-    user, conv_id, *, select_related=None, require_owner=False
+    user, conversation_id, *, select_related=None, require_owner=False
 ):
     """
     Get a conversation, with staff access to any conversation.
 
     Args:
         user: The requesting user
-        conv_id: The conversation ID to look up
+        conversation_id: The conversation UUID to look up
         select_related: Optional tuple of related fields to prefetch
         require_owner: If True, returns the actual conversation owner
                       (needed for memory lookups where we need the real owner's ID)
@@ -37,18 +37,18 @@ def get_conversation_for_user(
         qs = qs.select_related(*select_related)
 
     if user.is_staff:
-        conv = qs.filter(conv_id=conv_id).first()
+        conv = qs.filter(id=conversation_id).first()
         if not conv:
             raise Http404(_CONVERSATION_NOT_FOUND)
         return (conv, conv.user) if require_owner else conv
 
-    conv = qs.filter(conv_id=conv_id, user=user).first()
+    conv = qs.filter(id=conversation_id, user=user).first()
     if not conv:
         raise Http404(_CONVERSATION_NOT_FOUND)
     return (conv, user) if require_owner else conv
 
 
-def can_access_conversation(user, conv_id):
+def can_access_conversation(user, conversation_id):
     """
     Check if user can access the conversation (owner or staff).
 
@@ -57,11 +57,11 @@ def can_access_conversation(user, conv_id):
 
     Args:
         user: The requesting user
-        conv_id: The conversation ID to check
+        conversation_id: The conversation UUID to check
 
     Returns:
         bool: True if user has access, False otherwise
     """
     if user.is_staff:
-        return Conversation.objects.filter(conv_id=conv_id).exists()
-    return Conversation.objects.filter(user=user, conv_id=conv_id).exists()
+        return Conversation.objects.filter(id=conversation_id).exists()
+    return Conversation.objects.filter(user=user, id=conversation_id).exists()

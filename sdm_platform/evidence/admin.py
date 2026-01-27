@@ -35,7 +35,7 @@ class DocumentAdmin(admin.ModelAdmin):
     fieldsets = (
         (
             "Document Info",
-            {"fields": ("name", "file", "content_type", "journeys", "uploaded_by")},
+            {"fields": ("name", "file", "content_type", "journeys")},
         ),
         (
             "Processing",

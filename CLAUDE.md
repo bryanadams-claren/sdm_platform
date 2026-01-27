@@ -28,6 +28,6 @@
    - Add noqa comments only when absolutely necessary with explanation
 
    ## Testing
-   - Run tests with: `uv run python manage.py test <test_path> --keepdb`
+   - Run tests with: `uv run python manage.py test <test_path>`
    - Always run tests after making changes to verify nothing broke
    - Write tests for new features and update tests when making changes

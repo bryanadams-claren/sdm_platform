@@ -29,6 +29,7 @@ class DocumentAdmin(admin.ModelAdmin):
         "chroma_collection",
         "processed_at",
         "uploaded_at",
+        "uploaded_by",
     )
     filter_horizontal = ("journeys",)
     fieldsets = (
@@ -57,10 +58,15 @@ class DocumentAdmin(admin.ModelAdmin):
         ),
         (
             "Lifecycle",
-            {"fields": ("version", "is_active", "uploaded_at")},
+            {"fields": ("version", "is_active", "uploaded_at", "uploaded_by")},
         ),
     )
     actions = ["ingest_selected", "delete_from_chroma"]
+
+    def save_model(self, request, obj, form, change):
+        if not change:  # Only set on creation, not updates
+            obj.uploaded_by = request.user
+        super().save_model(request, obj, form, change)
 
     @admin.display(description="Journeys")
     def get_journeys_display(self, obj):

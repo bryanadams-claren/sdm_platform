@@ -4,6 +4,7 @@ import logging
 
 from django.conf import settings
 from langchain_chroma import Chroma
+from langchain_core.runnables import RunnableConfig
 
 from sdm_platform.evidence.utils.chroma import get_chroma_client
 from sdm_platform.llmchat.utils.graphs.base import SdmState
@@ -32,11 +33,33 @@ def _get_collections_to_search(client, limit: int | None = None) -> list[str]:
     return cols
 
 
+def _build_journey_filter(journey_slug: str | None) -> dict | None:
+    """
+    Build Chroma where filter for journey-aware retrieval.
+
+    Returns documents that are either:
+    1. Universal (is_universal=True), OR
+    2. Belong to the specified journey (journey_{slug}=True)
+
+    If journey_slug is None, returns None (no filter - all documents).
+    """
+    if not journey_slug:
+        return None
+
+    return {
+        "$or": [
+            {"is_universal": {"$eq": True}},
+            {f"journey_{journey_slug}": {"$eq": True}},
+        ]
+    }
+
+
 def _retrieve_top_k_from_collections(  # noqa: PLR0913
     client,
     query: str,
     embeddings,
     collections: list[str],
+    journey_slug: str | None = None,
     per_collection_k: int = 3,
     max_total_k: int = 5,
 ) -> list[tuple[object, float, str]]:
@@ -46,8 +69,13 @@ def _retrieve_top_k_from_collections(  # noqa: PLR0913
     Returns list of tuples (Document, score, collection_name).
     We then merge and return the top max_total_k results across all collections
     sorted by score (ascending - lower is better for cosine distance).
+
+    If journey_slug is provided, filters to only return documents that are
+    either universal or belong to the specified journey.
     """
     candidates = []
+    where_filter = _build_journey_filter(journey_slug)
+
     for col in collections:
         try:
             vs = Chroma(
@@ -57,7 +85,11 @@ def _retrieve_top_k_from_collections(  # noqa: PLR0913
             )
             # similarity_search_with_score returns (Document, score) pairs
             # Lower scores = better matches (cosine distance range: 0.0-2.0)
-            docs_and_scores = vs.similarity_search_with_score(query, k=per_collection_k)
+            search_kwargs = {"k": per_collection_k}
+            if where_filter:
+                search_kwargs["filter"] = where_filter
+
+            docs_and_scores = vs.similarity_search_with_score(query, **search_kwargs)
             for doc, score in docs_and_scores:
                 if score < settings.RAG_MAX_DISTANCE:
                     candidates.append((doc, float(score), col))
@@ -79,14 +111,20 @@ def create_retrieve_and_augment_node():
     """
     embeddings = get_embeddings()
 
-    def retrieve_and_augment(state: SdmState):
+    def retrieve_and_augment(state: SdmState, config: RunnableConfig):
         """
         Retrieve evidence from Chroma and augment messages.
         Context (user_context, system_prompt) should already be loaded.
+
+        Filters evidence by journey if journey_slug is provided in config.
         """
         msgs = state["messages"]
         user_context = state.get("user_context", "")
         system_prompt = state.get("system_prompt", "")
+
+        # Get journey_slug from config for filtering
+        configurable = config.get("configurable", {})
+        journey_slug = configurable.get("journey_slug")
 
         # Find last user message
         last_user_text = None
@@ -111,6 +149,7 @@ def create_retrieve_and_augment_node():
             query=last_user_text,
             embeddings=embeddings,
             collections=collections,
+            journey_slug=journey_slug,
             per_collection_k=2,
             max_total_k=5,
         )

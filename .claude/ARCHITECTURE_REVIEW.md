@@ -331,10 +331,10 @@ class ConversationPointProgress(models.Model):
 
 ### Medium Projects (Plan for Next Sprint)
 5. Centralize LLM model configuration in Django settings (THIS IS COMPLETED)
-6. Remove conv_id and use thread_id everywhere
+6. Remove conv_id and use thread_id everywhere (THIS IS COMPLETED)
 7. Replace ReportLab with WeasyPrint for PDF generation
 8. Add `user_type` field to User model
-9. Add `processing_status` and `processing_error` to Document model
+9. Add `processing_status` and `processing_error` to Document model (THIS IS COMPLETED)
 10. Refactor status broadcasting to use generic helper function
 
 ### Larger Projects (Separate Threads)

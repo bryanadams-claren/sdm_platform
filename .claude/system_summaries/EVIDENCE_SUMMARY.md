@@ -51,7 +51,18 @@ class Document(models.Model):
 
     # Relationships
     uploaded_by = ForeignKey(User, null=True, on_delete=SET_NULL)
-    journey = ForeignKey(Journey, null=True, on_delete=SET_NULL)  # Optional journey scope
+    journeys = ManyToManyField(Journey, blank=True)  # Journey scope (empty = universal)
+
+    # Helper properties
+    @property
+    def journey_slugs(self) -> list[str]:
+        """Return list of journey slugs for this document."""
+        return list(self.journeys.values_list("slug", flat=True))
+
+    @property
+    def is_universal(self) -> bool:
+        """Return True if document has no specific journeys (universal)."""
+        return not self.journeys.exists()
 ```
 
 ### 2. DocumentChunk Model
@@ -178,9 +189,15 @@ RecursiveCharacterTextSplitter(
     "text_hash": sha256(text),
     "source_url": "/evidence/documents/{id}/download/",
     "page": page_number,  # If from PDF
-    "source": original_filename
+    "source": original_filename,
+    # Journey filtering metadata
+    "is_universal": True/False,  # True if document has no journeys
+    "journey_backpain": True,    # Boolean flag per journey (if applicable)
+    "journey_kneepain": True,    # etc.
 }
 ```
+
+**Note**: Journey metadata uses boolean flags per journey (e.g., `journey_backpain: True`) because ChromaDB doesn't support `$in` queries on list fields. Documents with no journeys are marked `is_universal: True`.
 
 ## RAG Retrieval Flow
 
@@ -195,17 +212,26 @@ RecursiveCharacterTextSplitter(
 ```
 User message received
     ↓
-retrieve_and_augment node
+retrieve_and_augment node (receives config with journey_slug)
     ↓
     ├─→ Extract last user message text
+    ├─→ Extract journey_slug from config.configurable
     ├─→ Get ChromaDB client
     ├─→ List all collections (doc_* prefix)
+    ↓
+_build_journey_filter(journey_slug)
+    ↓
+    Build Chroma $or filter:
+    {"$or": [
+        {"is_universal": {"$eq": True}},
+        {"journey_{slug}": {"$eq": True}}
+    ]}
     ↓
 _retrieve_top_k_from_collections()
     ↓
     For each collection (up to 50):
         ├─→ Create Chroma vectorstore wrapper
-        ├─→ similarity_search_with_score(query, k=2)
+        ├─→ similarity_search_with_score(query, k=2, filter=journey_filter)
         ├─→ Filter results where score < RAG_MAX_DISTANCE
         └─→ Collect candidates
     ↓
@@ -217,6 +243,15 @@ Build evidence context for system prompt
     ↓
 Add citations to turn_citations state
 ```
+
+### Journey Filtering Logic
+
+| Document State | Chroma Metadata | Returned for "backpain" conversation? |
+|---------------|-----------------|--------------------------------------|
+| No journeys (universal) | `is_universal: True` | Yes |
+| journeys = [backpain] | `journey_backpain: True` | Yes |
+| journeys = [kneepain] | `journey_kneepain: True` | No |
+| journeys = [backpain, kneepain] | Both flags True | Yes |
 
 ### 3. Score Interpretation
 
@@ -289,6 +324,11 @@ turn_citations = [
 ### Admin
 - `sdm_platform/evidence/admin.py` - Document admin with ingestion actions
 
+### Management Commands
+- `sdm_platform/evidence/management/commands/ingest_document.py` - Ingest single document
+- `sdm_platform/evidence/management/commands/delete_document_from_chroma.py` - Delete from Chroma
+- `sdm_platform/evidence/management/commands/reingest_documents.py` - Bulk re-ingestion
+
 ### Configuration
 - `config/settings/base.py` - `LLM_EMBEDDING_MODEL`, `RAG_MAX_DISTANCE`
 
@@ -297,14 +337,14 @@ turn_citations = [
 **Document Admin** (`/admin/evidence/document/`):
 
 **List Display**:
-- Name, Version, Processing Status, Is Active, Vector Count, Journey, Uploaded At
+- Name, Version, Processing Status, Is Active, Vector Count, Journeys (or "Universal"), Uploaded At
 
 **Actions**:
 - "Ingest selected documents into Chroma" - Triggers ingestion task
 - "Delete selected documents from Chroma" - Removes from both Django and ChromaDB
 
 **Fieldsets**:
-- Document Info (name, file, journey, uploaded_by)
+- Document Info (name, file, journeys, uploaded_by) - journeys uses `filter_horizontal` for M2M
 - Processing (status, error, duration, processed_at)
 - Vector Storage (embedding_model, collection, vector_count)
 - Chunking Parameters (chunk_size, chunk_overlap)
@@ -323,6 +363,30 @@ uv run python manage.py ingest_document <document_id>
 ```bash
 uv run python manage.py delete_document_from_chroma <document_id>
 ```
+
+### Re-ingest Documents
+
+Re-ingest documents to update embeddings or Chroma metadata (e.g., after adding journey associations or changing embedding models):
+
+```bash
+# Preview what would be re-ingested
+uv run python manage.py reingest_documents --dry-run
+
+# Re-ingest all completed documents (via Celery)
+uv run python manage.py reingest_documents
+
+# Re-ingest with old collection cleanup (for embedding model changes)
+uv run python manage.py reingest_documents --cleanup
+
+# Re-ingest a specific document synchronously (for debugging)
+uv run python manage.py reingest_documents --document-id <uuid> --sync
+```
+
+**Options**:
+- `--dry-run`: Show what would be re-ingested without doing it
+- `--cleanup`: Delete old Chroma collection after successful re-ingestion
+- `--document-id <uuid>`: Re-ingest a specific document only
+- `--sync`: Run synchronously instead of via Celery (useful for debugging)
 
 ## Testing RAG Retrieval
 
@@ -385,22 +449,28 @@ document.embedding_model = "openai:text-embedding-3-small"
 
 This enables future migration tools to identify documents needing re-ingestion.
 
-## Journey-Scoped Evidence (Future)
+## Journey-Scoped Evidence
 
-The Document model includes an optional `journey` foreign key:
+Documents can be associated with specific journeys via a ManyToMany relationship:
 
 ```python
-journey = ForeignKey(
+journeys = ManyToManyField(
     "journeys.Journey",
-    null=True,
-    on_delete=SET_NULL,
-    help_text="If set, this evidence only applies to this journey's RAG retrieval"
+    blank=True,
+    related_name="evidence_documents",
+    help_text="Journeys this evidence applies to. Empty = universal."
 )
 ```
 
-**Current State**: Not yet used in retrieval filtering.
+**Behavior**:
+- **Universal documents** (no journeys): Retrieved for ALL conversations
+- **Journey-specific documents**: Only retrieved for conversations in matching journeys
+- **Multi-journey documents**: Retrieved for any of the associated journeys
 
-**Future Enhancement**: Modify `_get_collections_to_search()` to filter by journey when the conversation has a journey context.
+**How it works**:
+1. During ingestion, journey metadata is stored as boolean flags in Chroma (e.g., `journey_backpain: True`)
+2. During retrieval, `_build_journey_filter()` creates a Chroma `$or` filter
+3. Filter matches documents that are either universal OR belong to the current journey
 
 ## Performance Considerations
 

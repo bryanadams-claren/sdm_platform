@@ -73,17 +73,25 @@ class Document(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
     )
-    journey = models.ForeignKey(
+    journeys = models.ManyToManyField(
         "journeys.Journey",
-        null=True,
         blank=True,
-        on_delete=models.SET_NULL,
         related_name="evidence_documents",
-        help_text="If set, this evidence only applies to this journey's RAG retrieval",
+        help_text="Journeys this evidence applies to. Empty = universal.",
     )
 
     def __str__(self):
         return f"{self.name} (v{self.version})"
+
+    @property
+    def journey_slugs(self) -> list[str]:
+        """Return list of journey slugs for this document."""
+        return list(self.journeys.values_list("slug", flat=True))
+
+    @property
+    def is_universal(self) -> bool:
+        """Return True if document has no specific journeys (universal)."""
+        return not self.journeys.exists()
 
     @property
     def is_processed(self):

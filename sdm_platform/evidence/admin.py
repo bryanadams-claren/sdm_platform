@@ -15,10 +15,10 @@ class DocumentAdmin(admin.ModelAdmin):
         "processing_status",
         "is_active",
         "vector_count",
-        "journey",
+        "get_journeys_display",
         "uploaded_at",
     )
-    list_filter = ("processing_status", "is_active", "journey")
+    list_filter = ("processing_status", "is_active", "journeys")
     search_fields = ("name",)
     readonly_fields = (
         "processing_error",
@@ -29,10 +29,11 @@ class DocumentAdmin(admin.ModelAdmin):
         "processed_at",
         "uploaded_at",
     )
+    filter_horizontal = ("journeys",)
     fieldsets = (
         (
             "Document Info",
-            {"fields": ("name", "file", "content_type", "journey", "uploaded_by")},
+            {"fields": ("name", "file", "content_type", "journeys", "uploaded_by")},
         ),
         (
             "Processing",
@@ -59,6 +60,14 @@ class DocumentAdmin(admin.ModelAdmin):
         ),
     )
     actions = ["ingest_selected", "delete_from_chroma"]
+
+    @admin.display(description="Journeys")
+    def get_journeys_display(self, obj):
+        """Display journeys or 'Universal' if none."""
+        journeys = obj.journeys.all()
+        if not journeys:
+            return "Universal (all)"
+        return ", ".join(j.slug for j in journeys)
 
     @admin.action(
         description="Ingest selected documents into Chroma",

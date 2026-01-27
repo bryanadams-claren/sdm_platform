@@ -172,6 +172,16 @@ class DocumentIngestor:
                 "page": chunk.metadata.get("page"),
                 "source": getattr(chunk, "metadata", {}).get("source"),
             }
+
+            # Add journey metadata for RAG filtering
+            journey_slugs = self.document.journey_slugs
+            if journey_slugs:
+                md["is_universal"] = False
+                for slug in journey_slugs:
+                    md[f"journey_{slug}"] = True
+            else:
+                md["is_universal"] = True
+
             metadatas.append(md)
 
             # cache chunk in DB

@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from asgiref.sync import async_to_sync
@@ -9,6 +10,46 @@ from channels.layers import get_channel_layer
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+
+def send_status_update(
+    thread_name: str,
+    event_type: str,
+    log_level: int = logging.INFO,
+    **data: Any,
+) -> None:
+    """
+    Generic function to broadcast a status update to clients.
+
+    Args:
+        thread_name: Thread ID for the conversation
+        event_type: Type of status event (e.g., "thinking_start", "extraction_complete")
+        log_level: Logging level for this event (default: INFO)
+        **data: Additional key-value pairs to include in the status payload
+    """
+    status_group = f"status_{thread_name}"
+    timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)).isoformat()
+
+    status_data = {
+        "type": event_type,
+        "timestamp": timestamp,
+        **data,
+    }
+
+    if channel_layer := get_channel_layer():
+        async_to_sync(channel_layer.group_send)(
+            status_group,
+            {
+                "type": "status.update",
+                "data": status_data,
+            },
+        )
+        # Build log message with any extra data
+        extra_info = ", ".join(f"{k}={v}" for k, v in data.items()) if data else ""
+        log_msg = f"Sent {event_type} status for thread {thread_name}"
+        if extra_info:
+            log_msg += f" ({extra_info})"
+        logger.log(log_level, log_msg)
 
 
 def send_thinking_start(thread_name: str, trigger: str = "user_message") -> None:
@@ -20,28 +61,7 @@ def send_thinking_start(thread_name: str, trigger: str = "user_message") -> None
         trigger: What triggered the AI response
                  Options: "user_message", "conversation_point", "autonomous"
     """
-    status_group = f"status_{thread_name}"
-    timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)).isoformat()
-
-    status_data = {
-        "type": "thinking_start",
-        "timestamp": timestamp,
-        "trigger": trigger,
-    }
-
-    if channel_layer := get_channel_layer():
-        async_to_sync(channel_layer.group_send)(
-            status_group,
-            {
-                "type": "status.update",
-                "data": status_data,
-            },
-        )
-        logger.info(
-            "Sent thinking_start status for thread %s (trigger: %s)",
-            thread_name,
-            trigger,
-        )
+    send_status_update(thread_name, "thinking_start", trigger=trigger)
 
 
 def send_thinking_end(thread_name: str) -> None:
@@ -51,23 +71,7 @@ def send_thinking_end(thread_name: str) -> None:
     Args:
         thread_name: Thread ID for the conversation
     """
-    status_group = f"status_{thread_name}"
-    timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)).isoformat()
-
-    status_data = {
-        "type": "thinking_end",
-        "timestamp": timestamp,
-    }
-
-    if channel_layer := get_channel_layer():
-        async_to_sync(channel_layer.group_send)(
-            status_group,
-            {
-                "type": "status.update",
-                "data": status_data,
-            },
-        )
-        logger.info("Sent thinking_end status for thread %s", thread_name)
+    send_status_update(thread_name, "thinking_end")
 
 
 def send_thinking_progress(
@@ -84,31 +88,10 @@ def send_thinking_progress(
                Options: "loading_context", "generating_response", "extracting_memories"
         message: Optional human-readable message describing current activity
     """
-    status_group = f"status_{thread_name}"
-    timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)).isoformat()
-
-    status_data = {
-        "type": "thinking_progress",
-        "timestamp": timestamp,
-        "stage": stage,
-    }
-
+    extra: dict[str, Any] = {"stage": stage}
     if message:
-        status_data["message"] = message
-
-    if channel_layer := get_channel_layer():
-        async_to_sync(channel_layer.group_send)(
-            status_group,
-            {
-                "type": "status.update",
-                "data": status_data,
-            },
-        )
-        logger.debug(
-            "Sent thinking_progress status for thread %s (stage: %s)",
-            thread_name,
-            stage,
-        )
+        extra["message"] = message
+    send_status_update(thread_name, "thinking_progress", logging.DEBUG, **extra)
 
 
 def send_thinking_stream(thread_name: str, thought: str) -> None:
@@ -119,24 +102,7 @@ def send_thinking_stream(thread_name: str, thought: str) -> None:
         thread_name: Thread ID for the conversation
         thought: Summary of what the AI is currently thinking about
     """
-    status_group = f"status_{thread_name}"
-    timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)).isoformat()
-
-    status_data = {
-        "type": "thinking_stream",
-        "timestamp": timestamp,
-        "thought": thought,
-    }
-
-    if channel_layer := get_channel_layer():
-        async_to_sync(channel_layer.group_send)(
-            status_group,
-            {
-                "type": "status.update",
-                "data": status_data,
-            },
-        )
-        logger.debug("Sent thinking_stream status for thread %s", thread_name)
+    send_status_update(thread_name, "thinking_stream", logging.DEBUG, thought=thought)
 
 
 def send_extraction_start(thread_name: str) -> None:
@@ -148,23 +114,7 @@ def send_extraction_start(thread_name: str) -> None:
     Args:
         thread_name: Thread ID for the conversation
     """
-    status_group = f"status_{thread_name}"
-    timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)).isoformat()
-
-    status_data = {
-        "type": "extraction_start",
-        "timestamp": timestamp,
-    }
-
-    if channel_layer := get_channel_layer():
-        async_to_sync(channel_layer.group_send)(
-            status_group,
-            {
-                "type": "status.update",
-                "data": status_data,
-            },
-        )
-        logger.info("Sent extraction_start status for thread %s", thread_name)
+    send_status_update(thread_name, "extraction_start")
 
 
 def send_extraction_complete(
@@ -179,28 +129,9 @@ def send_extraction_complete(
         thread_name: Thread ID for the conversation
         summary_triggered: Whether summary generation was triggered (keyword-only)
     """
-    status_group = f"status_{thread_name}"
-    timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)).isoformat()
-
-    status_data = {
-        "type": "extraction_complete",
-        "timestamp": timestamp,
-        "summary_triggered": summary_triggered,
-    }
-
-    if channel_layer := get_channel_layer():
-        async_to_sync(channel_layer.group_send)(
-            status_group,
-            {
-                "type": "status.update",
-                "data": status_data,
-            },
-        )
-        logger.info(
-            "Sent extraction_complete status for thread %s (summary_triggered=%s)",
-            thread_name,
-            summary_triggered,
-        )
+    send_status_update(
+        thread_name, "extraction_complete", summary_triggered=summary_triggered
+    )
 
 
 def send_summary_complete(thread_name: str) -> None:
@@ -212,20 +143,4 @@ def send_summary_complete(thread_name: str) -> None:
     Args:
         thread_name: Thread ID for the conversation
     """
-    status_group = f"status_{thread_name}"
-    timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)).isoformat()
-
-    status_data = {
-        "type": "summary_complete",
-        "timestamp": timestamp,
-    }
-
-    if channel_layer := get_channel_layer():
-        async_to_sync(channel_layer.group_send)(
-            status_group,
-            {
-                "type": "status.update",
-                "data": status_data,
-            },
-        )
-        logger.info("Sent summary_complete status for thread %s", thread_name)
+    send_status_update(thread_name, "summary_complete")

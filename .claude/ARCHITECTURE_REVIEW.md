@@ -335,7 +335,7 @@ class ConversationPointProgress(models.Model):
 7. Replace ReportLab with WeasyPrint for PDF generation
 8. Add `user_type` field to User model
 9. Add `processing_status` and `processing_error` to Document model (THIS IS COMPLETED)
-10. Refactor status broadcasting to use generic helper function
+10. Refactor status broadcasting to use generic helper function (THIS IS COMPLETED)
 
 ### Larger Projects (Separate Threads)
 11. **User Role System:** Full implementation of patient/provider user types with permissions

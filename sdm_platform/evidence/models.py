@@ -35,7 +35,7 @@ class Document(models.Model):
 
     # lifecycle
     version = models.PositiveIntegerField(default=1)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(blank=True, null=True, default=None)
 

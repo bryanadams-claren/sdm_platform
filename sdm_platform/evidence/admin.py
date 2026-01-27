@@ -21,6 +21,7 @@ class DocumentAdmin(admin.ModelAdmin):
     list_filter = ("processing_status", "is_active", "journeys")
     search_fields = ("name",)
     readonly_fields = (
+        "is_active",
         "processing_error",
         "processing_duration_seconds",
         "embedding_model",

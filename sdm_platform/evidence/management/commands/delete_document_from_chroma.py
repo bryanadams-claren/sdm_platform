@@ -30,7 +30,7 @@ class Command(BaseCommand):
             msg = f"Document {doc_id} does not exist"
             raise CommandError(msg) from err
 
-        client, _ = get_chroma_client()
+        client = get_chroma_client()
         collection_name = document.chroma_collection or f"doc_{doc_id}"
 
         # Delete vectors from Chroma by metadata
@@ -49,7 +49,7 @@ class Command(BaseCommand):
 
         # Optionally, delete the document record in Django
         #  ... could run document.delete() here also
-        document.is_processed = False
+        document.processing_status = Document.ProcessingStatus.PENDING
         document.is_active = False
         document.save()
 

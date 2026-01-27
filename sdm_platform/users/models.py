@@ -8,6 +8,7 @@ from django.db.models import CharField
 from django.db.models import DateField
 from django.db.models import EmailField
 from django.db.models import ImageField
+from django.db.models import TextChoices
 from django.db.models import UUIDField
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -22,7 +23,18 @@ class User(AbstractUser):
     check forms.SignupForm and forms.SocialSignupForms accordingly.
     """
 
+    class UserType(TextChoices):
+        PATIENT = "patient", _("Patient")
+        PROVIDER = "provider", _("Provider")
+        ADMIN = "admin", _("Admin")
+
     id = UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_type = CharField(
+        _("User Type"),
+        max_length=20,
+        choices=UserType.choices,
+        default=UserType.PATIENT,
+    )
 
     # First and last name do not cover name patterns around the globe
     name = CharField(_("Name of User"), blank=True, max_length=255)

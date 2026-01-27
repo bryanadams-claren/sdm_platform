@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
                 ('chunk_size', models.PositiveIntegerField(default=500)),
                 ('chunk_overlap', models.PositiveIntegerField(default=50)),
                 ('version', models.PositiveIntegerField(default=1)),
-                ('is_active', models.BooleanField(default=True)),
+                ('is_active', models.BooleanField(default=False)),
                 ('uploaded_at', models.DateTimeField(auto_now_add=True)),
                 ('processed_at', models.DateTimeField(blank=True, default=None, null=True)),
                 ('processing_status', models.CharField(choices=[('pending', 'Pending'), ('queued', 'Queued'), ('processing', 'Processing'), ('completed', 'Completed'), ('failed', 'Failed')], default='pending', max_length=20)),

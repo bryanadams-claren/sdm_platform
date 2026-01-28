@@ -709,3 +709,192 @@ footer {
 .message.user .markdown-content blockquote {
   border-left-color: rgba(255, 255, 255, 0.4);
 }
+
+/* Decision Aid Styles */
+.decision-aid {
+  margin: 12px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  max-width: 100%;
+}
+
+.decision-aid .aid-context {
+  padding: 10px 14px;
+  margin: 0;
+  font-style: italic;
+  color: #495057;
+  background: #fff;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 0.95rem;
+}
+
+.decision-aid .aid-media {
+  position: relative;
+  background: #000;
+}
+
+.decision-aid-image {
+  max-width: 100%;
+  max-height: 300px;
+  width: auto;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  object-fit: contain;
+}
+
+.decision-aid-image:hover {
+  opacity: 0.9;
+}
+
+.decision-aid-video {
+  max-width: 100%;
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.decision-aid-embed {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: none;
+  display: block;
+}
+
+.decision-aid .aid-caption {
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  color: #495057;
+  background: #fff;
+  border-top: 1px solid #e9ecef;
+  font-weight: 500;
+}
+
+.decision-aid .aid-error {
+  padding: 20px;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.decision-aid .aid-fallback-link {
+  display: block;
+  padding: 20px;
+  text-align: center;
+  color: #0d6efd;
+  background: #f8f9fa;
+}
+
+/* Responsive sizing for decision aids */
+@media (max-width: 768px) {
+  .decision-aid {
+    margin: 8px 0;
+  }
+
+  .decision-aid .aid-context,
+  .decision-aid .aid-caption {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+
+  .decision-aid-image {
+    max-height: 200px;
+  }
+}
+
+/* Decision Aid Image Modal */
+.aid-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.3s ease,
+    visibility 0.3s ease;
+  cursor: pointer;
+}
+
+.aid-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.aid-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.aid-modal-content img {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.aid-modal-caption {
+  color: #fff;
+  font-size: 1rem;
+  margin-top: 12px;
+  text-align: center;
+  max-width: 90vw;
+  padding: 0 20px;
+}
+
+.aid-modal-close {
+  position: absolute;
+  top: -40px;
+  right: -10px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.aid-modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Hint text for clicking image */
+.aid-click-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.aid-media:hover .aid-click-hint {
+  opacity: 1;
+}

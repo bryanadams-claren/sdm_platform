@@ -3,6 +3,7 @@
 import logging
 
 from django.conf import settings
+from django.db.models import Q
 from langchain_chroma import Chroma
 from langchain_core.runnables import RunnableConfig
 
@@ -13,6 +14,55 @@ from sdm_platform.llmchat.utils.graphs.base import get_embeddings
 from sdm_platform.llmchat.utils.graphs.base import get_thing
 
 logger = logging.getLogger(__name__)
+
+
+_AID_DESCRIPTION_MAX_LENGTH = 150
+
+
+def _get_available_aids_context(journey_slug: str | None) -> str:
+    """
+    Build system prompt context listing available decision aids.
+
+    Args:
+        journey_slug: Optional journey slug to filter aids by
+
+    Returns:
+        String with available aids formatted for the system prompt,
+        or empty string if no aids are available.
+    """
+    from sdm_platform.journeys.models import DecisionAid  # noqa: PLC0415
+
+    query = Q(is_active=True)
+    if journey_slug:
+        # Include aids for this journey OR universal aids
+        query &= Q(journeys__slug=journey_slug) | Q(journeys__isnull=True)
+
+    aids = DecisionAid.objects.filter(query).distinct().order_by("sort_order")[:20]
+
+    if not aids:
+        return ""
+
+    lines = [
+        "\n## Available Visual Aids",
+        "You can show visual aids to the patient using the show_decision_aid tool.",
+        "Only use these when they would genuinely help explain a concept.\n",
+    ]
+
+    for aid in aids:
+        desc = f"- **{aid.slug}**: {aid.title} ({aid.get_aid_type_display()})"
+        if aid.display_context:
+            desc += f"\n  _Use when: {aid.display_context}_"
+        if aid.description:
+            # Truncate long descriptions
+            short_desc = (
+                aid.description[:_AID_DESCRIPTION_MAX_LENGTH] + "..."
+                if len(aid.description) > _AID_DESCRIPTION_MAX_LENGTH
+                else aid.description
+            )
+            desc += f"\n  {short_desc}"
+        lines.append(desc)
+
+    return "\n".join(lines)
 
 
 def _get_collections_to_search(client, limit: int | None = None) -> list[str]:
@@ -87,9 +137,9 @@ def _retrieve_top_k_from_collections(  # noqa: PLR0913
             # Lower scores = better matches (cosine distance range: 0.0-2.0)
             search_kwargs = {"k": per_collection_k}
             if where_filter:
-                search_kwargs["filter"] = where_filter
+                search_kwargs["filter"] = where_filter  # pyright: ignore[reportArgumentType]
 
-            docs_and_scores = vs.similarity_search_with_score(query, **search_kwargs)
+            docs_and_scores = vs.similarity_search_with_score(query, **search_kwargs)  # pyright: ignore[reportArgumentType]
             for doc, score in docs_and_scores:
                 if score < settings.RAG_MAX_DISTANCE:
                     candidates.append((doc, float(score), col))
@@ -135,10 +185,13 @@ def create_retrieve_and_augment_node():
                 last_user_text = content
                 break
 
+        # Get available decision aids for the system prompt
+        aids_context = _get_available_aids_context(journey_slug)
+
         if not last_user_text:
             # No user message to process, just add context and continue
             return _build_system_message_and_continue(
-                msgs, user_context, system_prompt, []
+                msgs, user_context, system_prompt, [], aids_context=aids_context
             )
 
         # Retrieve evidence from Chroma
@@ -190,7 +243,12 @@ def create_retrieve_and_augment_node():
 
         # Build system message with context and evidence
         return _build_system_message_and_continue(
-            msgs, user_context, system_prompt, turn_citations, evidence_lines
+            msgs,
+            user_context,
+            system_prompt,
+            turn_citations,
+            evidence_lines,
+            aids_context=aids_context,
         )
 
     return retrieve_and_augment

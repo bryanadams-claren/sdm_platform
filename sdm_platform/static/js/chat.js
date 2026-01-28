@@ -80,6 +80,183 @@ function autoLinkUrls(text) {
 }
 
 /**
+ * Open a modal to show a full-size image
+ */
+function openImageModal(src, alt, title) {
+  // Create modal if it doesn't exist
+  let modal = document.getElementById("aidImageModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "aidImageModal";
+    modal.className = "aid-modal-overlay";
+    modal.innerHTML = `
+      <div class="aid-modal-content">
+        <button class="aid-modal-close" aria-label="Close">&times;</button>
+        <img src="" alt="" />
+        <div class="aid-modal-caption"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Close on overlay click
+    modal.addEventListener("click", (e) => {
+      if (
+        e.target === modal ||
+        e.target.classList.contains("aid-modal-close")
+      ) {
+        closeImageModal();
+      }
+    });
+
+    // Close on Escape key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("active")) {
+        closeImageModal();
+      }
+    });
+  }
+
+  // Set content
+  const img = modal.querySelector("img");
+  const caption = modal.querySelector(".aid-modal-caption");
+  img.src = src;
+  img.alt = alt;
+  caption.textContent = title || "";
+
+  // Show modal
+  modal.classList.add("active");
+  document.body.style.overflow = "hidden";
+}
+
+function closeImageModal() {
+  const modal = document.getElementById("aidImageModal");
+  if (modal) {
+    modal.classList.remove("active");
+    document.body.style.overflow = "";
+  }
+}
+
+/**
+ * Render a decision aid (image, video, diagram) element.
+ * Returns a DOM element for the aid.
+ */
+function renderDecisionAid(aid) {
+  const container = document.createElement("div");
+  container.className = `decision-aid aid-type-${aid.aid_type}`;
+
+  // Context message from the AI
+  if (aid.context_message) {
+    const context = document.createElement("p");
+    context.className = "aid-context";
+    context.textContent = aid.context_message;
+    container.appendChild(context);
+  }
+
+  // Media element based on type
+  const mediaContainer = document.createElement("div");
+  mediaContainer.className = "aid-media";
+
+  if (
+    aid.aid_type === "image" ||
+    aid.aid_type === "diagram" ||
+    aid.aid_type === "infographic"
+  ) {
+    const img = document.createElement("img");
+    img.src = aid.url;
+    img.alt = aid.alt_text || aid.title;
+    img.className = "decision-aid-image";
+    img.loading = "lazy";
+    img.title = "Click to view full size";
+
+    // Click to open modal
+    img.addEventListener("click", () => {
+      openImageModal(aid.url, aid.alt_text || aid.title, aid.title);
+    });
+
+    // Add error handling
+    img.addEventListener("error", () => {
+      img.style.display = "none";
+      const errorMsg = document.createElement("p");
+      errorMsg.className = "aid-error";
+      errorMsg.textContent = "Image could not be loaded";
+      mediaContainer.appendChild(errorMsg);
+    });
+    mediaContainer.appendChild(img);
+
+    // Add click hint
+    const hint = document.createElement("span");
+    hint.className = "aid-click-hint";
+    hint.textContent = "Click to enlarge";
+    mediaContainer.appendChild(hint);
+  } else if (aid.aid_type === "video") {
+    const video = document.createElement("video");
+    video.src = aid.url;
+    video.controls = true;
+    video.className = "decision-aid-video";
+    video.preload = "metadata";
+    if (aid.thumbnail_url) {
+      video.poster = aid.thumbnail_url;
+    }
+    // Add error handling
+    video.addEventListener("error", () => {
+      video.style.display = "none";
+      const fallback = document.createElement("a");
+      fallback.href = aid.url;
+      fallback.target = "_blank";
+      fallback.rel = "noopener noreferrer";
+      fallback.textContent = "Open video in new tab";
+      fallback.className = "aid-fallback-link";
+      mediaContainer.appendChild(fallback);
+    });
+    mediaContainer.appendChild(video);
+  } else if (aid.aid_type === "external_video") {
+    // YouTube/Vimeo embed - convert watch URLs to embed URLs
+    let embedUrl = aid.url;
+    // Convert YouTube watch URLs to embed URLs
+    if (embedUrl.includes("youtube.com/watch")) {
+      const videoId = new URL(embedUrl).searchParams.get("v");
+      if (videoId) {
+        embedUrl = `https://www.youtube.com/embed/${videoId}`;
+      }
+    } else if (embedUrl.includes("youtu.be/")) {
+      const videoId = embedUrl.split("youtu.be/")[1]?.split("?")[0];
+      if (videoId) {
+        embedUrl = `https://www.youtube.com/embed/${videoId}`;
+      }
+    }
+    // Convert Vimeo URLs to embed URLs
+    if (embedUrl.includes("vimeo.com/") && !embedUrl.includes("/video/")) {
+      const videoId = embedUrl.split("vimeo.com/")[1]?.split("?")[0];
+      if (videoId) {
+        embedUrl = `https://player.vimeo.com/video/${videoId}`;
+      }
+    }
+
+    const iframe = document.createElement("iframe");
+    iframe.src = embedUrl;
+    iframe.className = "decision-aid-embed";
+    iframe.allowFullscreen = true;
+    iframe.setAttribute("frameborder", "0");
+    iframe.setAttribute(
+      "allow",
+      "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+    );
+    iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+    mediaContainer.appendChild(iframe);
+  }
+
+  container.appendChild(mediaContainer);
+
+  // Caption with title
+  const caption = document.createElement("div");
+  caption.className = "aid-caption";
+  caption.textContent = aid.title;
+  container.appendChild(caption);
+
+  return container;
+}
+
+/**
  * Render markdown text and linkify citations.
  * Returns an HTML string (safe to use with innerHTML after DOMPurify or trusted content).
  */
@@ -207,6 +384,7 @@ async function apiFetchChatHistory(convId) {
           text: msg.content,
           timestamp: msg.timestamp,
           citations: msg.citations,
+          decisionAids: msg.decision_aids || [],
         });
       }
     })
@@ -265,6 +443,7 @@ async function setActiveChat(chatId) {
         data.timestamp,
         data.citations,
         true,
+        data.decision_aids || [],
       );
       scrollToBottom();
     });
@@ -278,6 +457,7 @@ async function setActiveChat(chatId) {
         data.timestamp,
         data.citations,
         true,
+        data.decision_aids || [],
       );
       scrollToBottom();
     });
@@ -318,7 +498,15 @@ async function setActiveChat(chatId) {
 function renderMessages(messages = []) {
   chatMessages.innerHTML = "";
   messages.forEach((m) =>
-    appendMessage(m.role, m.name, m.text, m.timestamp, m.citations, false),
+    appendMessage(
+      m.role,
+      m.name,
+      m.text,
+      m.timestamp,
+      m.citations,
+      false,
+      m.decisionAids || [],
+    ),
   );
   scrollToBottom();
 }
@@ -331,6 +519,7 @@ function appendMessage(
   timestamp = null,
   citations = [],
   save = true,
+  decisionAids = [],
 ) {
   const wrapper = document.createElement("div");
   wrapper.className = `message ${role}`;
@@ -356,6 +545,15 @@ function appendMessage(
   bubble.appendChild(timeSpan);
 
   wrapper.appendChild(bubble);
+
+  // Render decision aids if present
+  if (Array.isArray(decisionAids) && decisionAids.length > 0) {
+    decisionAids.forEach((aid) => {
+      const aidEl = renderDecisionAid(aid);
+      wrapper.appendChild(aidEl);
+    });
+  }
+
   chatMessages.appendChild(wrapper);
 
   // ... no video clips for now ...
@@ -407,7 +605,7 @@ function appendMessage(
 
   if (save && activeConvId) {
     const arr = histories.get(activeConvId) || [];
-    arr.push({ role, text, timestamp, citations });
+    arr.push({ role, text, timestamp, citations, decisionAids });
     histories.set(activeConvId, arr);
   }
 }

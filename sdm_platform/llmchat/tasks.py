@@ -155,6 +155,7 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
                     "user_context": "",  # Will be populated by load_context node
                     "system_prompt": conversation.system_prompt,
                     "turn_citations": [],
+                    "turn_decision_aids": [],
                 },
                 config,
             )
@@ -172,6 +173,7 @@ def send_llm_reply(thread_name: str, username: str, user_input: str):
                 reply["messages"][-1].content,
                 datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)),
                 reply["turn_citations"],
+                decision_aids=reply.get("turn_decision_aids", []),
             )
 
             if channel_layer := get_channel_layer():

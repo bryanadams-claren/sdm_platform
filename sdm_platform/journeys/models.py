@@ -29,6 +29,7 @@ class Journey(models.Model):
         options: "QuerySet[JourneyOption]"
         conversation_points: "QuerySet[ConversationPoint]"
         responses: "QuerySet[JourneyResponse]"
+        decision_aids: "QuerySet[DecisionAid]"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.SlugField(max_length=100, unique=True)  # e.g., "backpain"
@@ -236,3 +237,78 @@ class JourneyResponse(models.Model):
 
     def __str__(self):
         return f"JourneyResponse: {self.user.name} - {self.journey.title}"
+
+
+class DecisionAid(models.Model):
+    """
+    A visual/media asset that supports shared decision making.
+
+    Examples: anatomy diagrams, surgery videos, exercise demonstrations.
+    These can be displayed inline during conversations when the LLM
+    determines they would help explain a concept to the patient.
+    """
+
+    class AidType(models.TextChoices):
+        IMAGE = "image", "Image"
+        VIDEO = "video", "Video"
+        EXTERNAL_VIDEO = "external_video", "External Video (YouTube/Vimeo)"
+        INFOGRAPHIC = "infographic", "Infographic"
+        DIAGRAM = "diagram", "Diagram"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    slug = models.SlugField(max_length=100, unique=True)
+    title = models.CharField(max_length=255)
+
+    # Type and media
+    aid_type = models.CharField(max_length=20, choices=AidType.choices)
+    file = models.FileField(upload_to="decision_aids/", blank=True)
+    thumbnail = models.ImageField(upload_to="decision_aids/thumbs/", blank=True)
+    external_url = models.URLField(blank=True)
+
+    # Description for LLM context
+    description = models.TextField(
+        help_text="Description of what this aid shows. Provided to the LLM."
+    )
+    alt_text = models.CharField(max_length=500, blank=True)
+    transcript = models.TextField(blank=True, help_text="Video transcript")
+
+    # Journey associations (like Document model pattern)
+    journeys = models.ManyToManyField(
+        "journeys.Journey",
+        blank=True,
+        related_name="decision_aids",
+        help_text="Journeys this aid applies to. Empty = universal.",
+    )
+
+    # Display hints for LLM
+    display_context = models.TextField(
+        blank=True,
+        help_text="When should this be shown? e.g., 'When explaining PT benefits'",
+    )
+
+    # Lifecycle
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "title"]
+
+    def __str__(self):
+        return f"{self.title} ({self.get_aid_type_display()})"
+
+    # Type stub for Django's auto-generated method
+    def get_aid_type_display(self) -> str: ...
+
+    @property
+    def is_universal(self) -> bool:
+        """Return True if this aid has no specific journeys (universal)."""
+        return not self.journeys.exists()
+
+    @property
+    def media_url(self) -> str:
+        """Return the appropriate URL for this aid's media."""
+        if self.file:
+            return self.file.url
+        return self.external_url

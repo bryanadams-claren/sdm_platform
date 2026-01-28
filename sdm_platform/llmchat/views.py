@@ -131,19 +131,32 @@ def history(request, conversation_id):
         chat_history = get_chat_history(full_history)
         msg_list = []
         for turn in chat_history:
-            msg_list += [
-                format_message(
-                    msg.get("type", None),
-                    _get_name(msg),
-                    msg.get("data", {}).get("content", ""),
-                    turn.get(
-                        "created_at",
-                        datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)),
-                    ),
-                    turn.get("turn_citations", []),
+            turn_citations = turn.get("turn_citations", [])
+            turn_decision_aids = turn.get("turn_decision_aids", [])
+
+            for msg in turn["new_messages"]:
+                msg_type = msg.get("type", None)
+                if msg_type not in ["human", "ai"]:
+                    continue
+                # Skip AI messages with empty content (tool call messages)
+                content = msg.get("data", {}).get("content", "")
+                if msg_type == "ai" and not content:
+                    continue
+                # Only attach citations and decision aids to AI messages
+                citations = turn_citations if msg_type == "ai" else []
+                decision_aids = turn_decision_aids if msg_type == "ai" else []
+                msg_list.append(
+                    format_message(
+                        msg_type,
+                        _get_name(msg),
+                        content,
+                        turn.get(
+                            "created_at",
+                            datetime.datetime.now(ZoneInfo(settings.TIME_ZONE)),
+                        ),
+                        citations,
+                        decision_aids=decision_aids,
+                    )
                 )
-                for msg in turn["new_messages"]
-                if msg.get("type", None) in ["human", "ai"]
-            ]
         data.update({"messages": msg_list})
     return JsonResponse(data)

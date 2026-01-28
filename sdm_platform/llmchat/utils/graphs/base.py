@@ -26,6 +26,7 @@ class SdmState(MessagesState):
     user_context: str
     system_prompt: str
     turn_citations: list[dict]
+    turn_decision_aids: list[dict]
 
 
 def get_model():
@@ -46,7 +47,7 @@ def get_thing(obj, attr, default=None):
 def get_postgres_checkpointer():
     """Get a PostgresSaver checkpointer for graph state persistence."""
     env = environ.Env()
-    return PostgresSaver.from_conn_string(env.str("DATABASE_URL"))
+    return PostgresSaver.from_conn_string(env.str("DATABASE_URL"))  # pyright: ignore[reportArgumentType]
 
 
 GLOBAL_INSTRUCTIONS = (
@@ -55,12 +56,13 @@ GLOBAL_INSTRUCTIONS = (
 )
 
 
-def _build_system_message_and_continue(
+def _build_system_message_and_continue(  # noqa: PLR0913
     msgs: list,
     user_context: str,
     system_prompt: str,
     turn_citations: list,
     evidence_lines: list[str] | None = None,
+    aids_context: str | None = None,
 ) -> dict:
     """
     Helper to build system message from context and optional evidence.
@@ -71,6 +73,7 @@ def _build_system_message_and_continue(
         system_prompt: Conversation system prompt (journey responses, etc.)
         turn_citations: List of citation dicts
         evidence_lines: Optional list of evidence strings
+        aids_context: Optional string listing available decision aids
 
     Returns:
         State dict with augmented messages
@@ -96,6 +99,10 @@ def _build_system_message_and_continue(
             " (e.g., [1], [2]) if used."
         )
 
+    # Add available decision aids context
+    if aids_context:
+        system_content_parts.append(aids_context)
+
     # Build and prepend system message if we have any context
     if system_content_parts:
         system_msg = {"role": "system", "content": "\n\n".join(system_content_parts)}
@@ -107,6 +114,7 @@ def _build_system_message_and_continue(
         "messages": augmented_messages,
         "next_state": "call_model",
         "turn_citations": turn_citations,
+        "turn_decision_aids": [],
         "user_context": user_context,
         "system_prompt": system_prompt,
     }

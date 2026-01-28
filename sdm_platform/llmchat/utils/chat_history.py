@@ -34,6 +34,7 @@ def get_chat_history(history):
                 "created_at": datetime.fromisoformat(snap.created_at),
                 "new_messages": [message_to_dict(m) for m in new_msgs],
                 "turn_citations": snap.values.get("turn_citations", []),
+                "turn_decision_aids": snap.values.get("turn_decision_aids", []),
             },
         )
         prev_msgs = cur_msgs

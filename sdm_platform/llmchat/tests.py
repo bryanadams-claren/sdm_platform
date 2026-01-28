@@ -24,6 +24,8 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 
+from sdm_platform.journeys.models import DecisionAid
+from sdm_platform.journeys.models import Journey
 from sdm_platform.llmchat.consumers import ChatConsumer
 from sdm_platform.llmchat.consumers import get_useremail_from_scope
 from sdm_platform.llmchat.models import Conversation
@@ -32,6 +34,8 @@ from sdm_platform.llmchat.utils.chat_history import get_chat_history
 from sdm_platform.llmchat.utils.format import format_message
 from sdm_platform.llmchat.utils.graphs import get_compiled_graph
 from sdm_platform.llmchat.utils.graphs import get_postgres_checkpointer
+from sdm_platform.llmchat.utils.tools.decision_aids import _convert_to_embed_url
+from sdm_platform.llmchat.utils.tools.decision_aids import show_decision_aid
 from sdm_platform.memory.managers import UserProfileManager
 from sdm_platform.memory.store import get_memory_store
 from sdm_platform.users.models import User
@@ -1092,3 +1096,408 @@ class GraphWithMemoryTest(TestCase):
         # Messages: original human message + AI response
         self.assertGreaterEqual(len(result["messages"]), 1)
         self.assertTrue(mock_model.invoke.called)
+
+
+class DecisionAidURLConversionTest(TestCase):
+    """Test the URL conversion utility for decision aids."""
+
+    def test_convert_youtube_watch_url(self):
+        """Test converting YouTube watch URL to embed URL."""
+        url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        result = _convert_to_embed_url(url)
+        self.assertEqual(result, "https://www.youtube.com/embed/dQw4w9WgXcQ")
+
+    def test_convert_youtube_short_url(self):
+        """Test converting YouTube short URL (youtu.be) to embed URL."""
+        url = "https://youtu.be/dQw4w9WgXcQ"
+        result = _convert_to_embed_url(url)
+        self.assertEqual(result, "https://www.youtube.com/embed/dQw4w9WgXcQ")
+
+    def test_convert_youtube_short_url_with_params(self):
+        """Test converting YouTube short URL with query params."""
+        url = "https://youtu.be/dQw4w9WgXcQ?t=120"
+        result = _convert_to_embed_url(url)
+        self.assertEqual(result, "https://www.youtube.com/embed/dQw4w9WgXcQ")
+
+    def test_convert_vimeo_url(self):
+        """Test converting Vimeo URL to embed URL."""
+        url = "https://vimeo.com/123456789"
+        result = _convert_to_embed_url(url)
+        self.assertEqual(result, "https://player.vimeo.com/video/123456789")
+
+    def test_already_embed_url_unchanged(self):
+        """Test that already-embed URLs are returned unchanged."""
+        # YouTube embed URL
+        url = "https://www.youtube.com/embed/dQw4w9WgXcQ"
+        result = _convert_to_embed_url(url)
+        self.assertEqual(result, url)
+
+        # Vimeo embed URL
+        url = "https://player.vimeo.com/video/123456789"
+        result = _convert_to_embed_url(url)
+        self.assertEqual(result, url)
+
+    def test_non_video_url_unchanged(self):
+        """Test that non-video URLs are returned unchanged."""
+        url = "https://example.com/image.png"
+        result = _convert_to_embed_url(url)
+        self.assertEqual(result, url)
+
+    def test_empty_url_unchanged(self):
+        """Test that empty URLs are returned unchanged."""
+        result = _convert_to_embed_url("")
+        self.assertEqual(result, "")
+
+    def test_none_url_handling(self):
+        """Test that None-ish values are handled gracefully."""
+        result = _convert_to_embed_url("")
+        self.assertEqual(result, "")
+
+
+class ShowDecisionAidToolTest(TestCase):
+    """Test the show_decision_aid LangChain tool."""
+
+    def setUp(self):
+        import uuid  # noqa: PLC0415
+
+        self.journey, _ = Journey.objects.get_or_create(
+            slug="backpain-tool-test",
+            defaults={"title": "Back Pain Journey (Tool Test)"},
+        )
+
+        # Create a test decision aid with unique slug (using short UUID)
+        self.unique_id = str(uuid.uuid4())[:8]
+        self.aid = DecisionAid.objects.create(
+            slug=f"spine-{self.unique_id}",
+            title="Spine Anatomy",
+            aid_type=DecisionAid.AidType.IMAGE,
+            external_url="https://example.com/spine.png",
+            description="A diagram of the spine.",
+            alt_text="Spine anatomy diagram",
+        )
+        self.aid_slug = self.aid.slug
+
+    def test_show_decision_aid_success(self):
+        """Test successful retrieval of a decision aid."""
+        result = show_decision_aid.invoke({"aid_slug": self.aid_slug})
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["aid_slug"], self.aid_slug)
+        self.assertEqual(result["title"], "Spine Anatomy")
+        self.assertEqual(result["aid_type"], DecisionAid.AidType.IMAGE)
+        self.assertEqual(result["url"], "https://example.com/spine.png")
+        self.assertEqual(result["alt_text"], "Spine anatomy diagram")
+        self.assertEqual(result["context_message"], "")
+
+    def test_show_decision_aid_with_context_message(self):
+        """Test retrieval with a context message."""
+        result = show_decision_aid.invoke(
+            {
+                "aid_slug": self.aid_slug,
+                "context_message": "Here's what the spine looks like:",
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["context_message"], "Here's what the spine looks like:")
+
+    def test_show_decision_aid_not_found(self):
+        """Test behavior when aid is not found."""
+        result = show_decision_aid.invoke({"aid_slug": "nonexistent-aid-xyz123"})
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["error"])
+        self.assertIn("nonexistent-aid-xyz123", result["error"])
+
+    def test_show_decision_aid_inactive_not_found(self):
+        """Test that inactive aids are not returned."""
+        self.aid.is_active = False
+        self.aid.save()
+
+        result = show_decision_aid.invoke({"aid_slug": self.aid_slug})
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["error"])
+
+    def test_show_decision_aid_converts_external_video_url(self):
+        """Test that external video URLs are converted to embed format."""
+        slug = f"vid-{self.unique_id}"
+        video_aid = DecisionAid.objects.create(  # noqa: F841
+            slug=slug,
+            title="Surgery Video",
+            aid_type=DecisionAid.AidType.EXTERNAL_VIDEO,
+            external_url="https://www.youtube.com/watch?v=abc123",
+            description="A video of the surgery procedure.",
+        )
+
+        result = show_decision_aid.invoke({"aid_slug": slug})
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["url"], "https://www.youtube.com/embed/abc123")
+
+    def test_show_decision_aid_uses_file_url_when_present(self):
+        """Test that file URL is used when file is uploaded."""
+        from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: PLC0415
+
+        test_file = SimpleUploadedFile(
+            name="test.png",
+            content=b"\x89PNG\r\n\x1a\n",
+            content_type="image/png",
+        )
+
+        slug = f"upl-{self.unique_id}"
+        file_aid = DecisionAid.objects.create(  # pyright: ignore[reportUnusedVariable]  # noqa: F841
+            slug=slug,
+            title="Uploaded Image",
+            aid_type=DecisionAid.AidType.IMAGE,
+            file=test_file,
+            description="An uploaded image.",
+        )
+
+        result = show_decision_aid.invoke({"aid_slug": slug})
+
+        self.assertTrue(result["success"])
+        self.assertIn("decision_aids/", result["url"])
+
+    def test_show_decision_aid_falls_back_to_title_for_alt_text(self):
+        """Test that title is used as alt_text when alt_text is empty."""
+        slug = f"noalt-{self.unique_id}"
+        aid_no_alt = DecisionAid.objects.create(  # pyright: ignore[reportUnusedVariable]  # noqa: F841
+            slug=slug,
+            title="Aid Without Alt Text",
+            aid_type=DecisionAid.AidType.DIAGRAM,
+            external_url="https://example.com/diagram.png",
+            description="A diagram without alt text.",
+            alt_text="",  # Empty alt text
+        )
+
+        result = show_decision_aid.invoke({"aid_slug": slug})
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["alt_text"], "Aid Without Alt Text")
+
+
+class FormatMessageWithDecisionAidsTest(TestCase):
+    """Test format_message with decision_aids parameter."""
+
+    def test_format_message_with_decision_aids(self):
+        """Test that decision_aids are included in formatted message."""
+        timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
+        decision_aids = [
+            {
+                "aid_id": "abc123",
+                "aid_slug": "spine-anatomy",
+                "aid_type": "image",
+                "title": "Spine Anatomy",
+                "url": "https://example.com/spine.png",
+            }
+        ]
+
+        result = format_message(
+            role="ai",
+            name="Assistant",
+            message="Here's the spine anatomy.",
+            timestamp=timestamp,
+            citations=[],
+            decision_aids=decision_aids,
+        )
+
+        self.assertEqual(result["decision_aids"], decision_aids)
+
+    def test_format_message_without_decision_aids(self):
+        """Test that decision_aids defaults to empty when not provided."""
+        timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
+
+        result = format_message(
+            role="ai",
+            name="Assistant",
+            message="Hello!",
+            timestamp=timestamp,
+            citations=[],
+        )
+
+        # Should have empty decision_aids or not have the key
+        self.assertEqual(result.get("decision_aids", []), [])
+
+
+class ChatHistoryWithDecisionAidsTest(TestCase):
+    """Test chat history processing with decision aids."""
+
+    def test_get_chat_history_includes_decision_aids(self):
+        """Test that decision aids are preserved in chat history."""
+        timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
+
+        decision_aids = [
+            {
+                "aid_id": "test-id",
+                "aid_slug": "test-slug",
+                "aid_type": "image",
+                "title": "Test Aid",
+                "url": "https://example.com/aid.png",
+            }
+        ]
+
+        mock_snap = MagicMock()
+        mock_snap.values = {
+            "messages": [AIMessage(content="Here's the aid.")],
+            "turn_citations": [],
+            "turn_decision_aids": decision_aids,
+        }
+        mock_snap.created_at = timestamp.isoformat()
+
+        result = get_chat_history([mock_snap])
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["turn_decision_aids"], decision_aids)
+
+    def test_get_chat_history_empty_decision_aids(self):
+        """Test chat history with no decision aids."""
+        timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
+
+        mock_snap = MagicMock()
+        mock_snap.values = {
+            "messages": [AIMessage(content="Just text.")],
+            "turn_citations": [],
+            # No turn_decision_aids key
+        }
+        mock_snap.created_at = timestamp.isoformat()
+
+        result = get_chat_history([mock_snap])
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["turn_decision_aids"], [])
+
+
+class HistoryViewDecisionAidsTest(TestCase):
+    """Test the history view with decision aids."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            email="test@example.com",
+            password="testpass123",
+        )
+        self.client.login(username="test@example.com", password="testpass123")
+
+        self.conversation = Conversation.objects.create(
+            user=self.user,
+            title="Test Conversation",
+        )
+
+    @patch("sdm_platform.llmchat.views.get_postgres_checkpointer")
+    @patch("sdm_platform.llmchat.views.get_compiled_graph")
+    @patch("sdm_platform.llmchat.views.get_chat_history")
+    def test_history_view_includes_decision_aids(
+        self,
+        mock_get_chat_history,
+        mock_get_graph,
+        mock_get_checkpointer,
+    ):
+        """Test that history view includes decision aids in response."""
+        mock_checkpointer_instance = MagicMock()
+        mock_get_checkpointer.return_value.__enter__.return_value = (
+            mock_checkpointer_instance
+        )
+
+        mock_graph = MagicMock()
+        mock_get_graph.return_value = mock_graph
+        mock_graph.get_state_history.return_value = []
+
+        timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
+        decision_aids = [
+            {
+                "aid_id": "test-id",
+                "aid_slug": "spine-anatomy",
+                "aid_type": "image",
+                "title": "Spine Anatomy",
+                "url": "https://example.com/spine.png",
+            }
+        ]
+
+        mock_get_chat_history.return_value = [
+            {
+                "created_at": timestamp,
+                "new_messages": [
+                    {
+                        "type": "ai",
+                        "data": {
+                            "content": "Here's the spine anatomy.",
+                            "metadata": {},
+                        },
+                    },
+                ],
+                "turn_citations": [],
+                "turn_decision_aids": decision_aids,
+            },
+        ]
+
+        response = self.client.get(
+            reverse(
+                "conversation_history",
+                kwargs={"conversation_id": self.conversation.id},
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(len(data["messages"]), 1)
+        self.assertEqual(data["messages"][0]["decision_aids"], decision_aids)
+
+    @patch("sdm_platform.llmchat.views.get_postgres_checkpointer")
+    @patch("sdm_platform.llmchat.views.get_compiled_graph")
+    @patch("sdm_platform.llmchat.views.get_chat_history")
+    def test_history_view_skips_empty_ai_messages(
+        self,
+        mock_get_chat_history,
+        mock_get_graph,
+        mock_get_checkpointer,
+    ):
+        """Test that AI messages with empty content (tool calls) are skipped."""
+        mock_checkpointer_instance = MagicMock()
+        mock_get_checkpointer.return_value.__enter__.return_value = (
+            mock_checkpointer_instance
+        )
+
+        mock_graph = MagicMock()
+        mock_get_graph.return_value = mock_graph
+        mock_graph.get_state_history.return_value = []
+
+        timestamp = datetime.datetime.now(ZoneInfo(settings.TIME_ZONE))
+
+        # Simulate a tool call message (empty content) followed by actual response
+        mock_get_chat_history.return_value = [
+            {
+                "created_at": timestamp,
+                "new_messages": [
+                    {
+                        "type": "ai",
+                        "data": {
+                            "content": "",  # Empty - tool call message
+                            "metadata": {},
+                        },
+                    },
+                    {
+                        "type": "ai",
+                        "data": {
+                            "content": "Here's the actual response.",
+                            "metadata": {},
+                        },
+                    },
+                ],
+                "turn_citations": [],
+                "turn_decision_aids": [],
+            },
+        ]
+
+        response = self.client.get(
+            reverse(
+                "conversation_history",
+                kwargs={"conversation_id": self.conversation.id},
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        # Should only have the non-empty AI message
+        self.assertEqual(len(data["messages"]), 1)
+        self.assertEqual(data["messages"][0]["content"], "Here's the actual response.")

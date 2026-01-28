@@ -1,4 +1,5 @@
 # ruff: noqa: ERA001, E501
+# pyright: reportArgumentType=false
 """Base settings to build other settings files upon."""
 
 import ssl
@@ -290,8 +291,8 @@ LOGGING = {
     "root": {"level": "INFO", "handlers": ["console"]},
 }
 
-REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore[call-overload]
-REDIS_SSL = REDIS_URL.startswith("rediss://")  # type: ignore[call-overload]
+REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
+REDIS_SSL = REDIS_URL.startswith("rediss://")  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
 
 # Celery
 # ------------------------------------------------------------------------------
@@ -397,8 +398,8 @@ SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "APPS": [
             {
-                "client_id": env("GOOGLE_CLIENT_ID", default=""),  # pyright: ignore[reportArgumentType]
-                "secret": env("GOOGLE_CLIENT_SECRET", default=""),  # pyright: ignore[reportArgumentType]
+                "client_id": env("GOOGLE_CLIENT_ID", default=""),
+                "secret": env("GOOGLE_CLIENT_SECRET", default=""),
             },
         ],
         "SCOPE": [
@@ -420,7 +421,7 @@ AI_ASSISTANT_NAME = "Claire"
 # Available modes: "assistant", "autonomous"
 # - assistant: LLM only responds to messages starting with @llm (default)
 # - autonomous: LLM responds to every human message (1:1 chat)
-LLM_GRAPH_MODE = env("LLM_GRAPH_MODE", default="autonomous")  # pyright: ignore[reportArgumentType]
+LLM_GRAPH_MODE = env("LLM_GRAPH_MODE", default="autonomous")
 
 # LLM Model Configuration
 # ------------------------------------------------------------------------------
@@ -436,7 +437,8 @@ LLM_SUMMARY_MODEL = env("LLM_SUMMARY_MODEL", default="openai:gpt-4.1")
 # Different embedding models produce incompatible vector spaces. If you change this value,
 # you must re-run document ingestion for all existing documents.
 LLM_EMBEDDING_MODEL = env(
-    "LLM_EMBEDDING_MODEL", default="openai:text-embedding-3-small"
+    "LLM_EMBEDDING_MODEL",
+    default="openai:text-embedding-3-small",  # pyright: ignore[reportArgumentType]
 )
 
 # RAG Retrieval Configuration

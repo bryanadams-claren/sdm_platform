@@ -1,4 +1,6 @@
-# ruff: noqa: E501, ERA001
+# ruff: noqa: E501
+# pyright: reportArgumentType=false
+
 import logging
 
 import sentry_sdk
@@ -35,17 +37,7 @@ internal_ip = socket.gethostbyname(hostname)
 if internal_ip.startswith("10."):
     ALLOWED_HOSTS.append(internal_ip)
 
-# ALLOWED_HOSTS = env.list(
-#     "DJANGO_ALLOWED_HOSTS",
-#     default=[  # pyright: ignore[reportArgumentType]
-#         "10.0.1.204",
-#         ".clarenhealth.com",
-#         ".perspicacioushealth.com",
-#         ".elasticbeanstalk.com",
-#         ".backpaindecisionsupport.com",
-#     ],
-# )  # type: ignore[call-overload]
-BASE_DOMAIN = env.str("DJANGO_BASE_DOMAIN", default="clarenhealth.com")  # pyright: ignore[reportArgumentType]
+BASE_DOMAIN = env.str("DJANGO_BASE_DOMAIN", default="clarenhealth.com")
 
 # Session/CSRF cookie domain - share cookies across subdomains
 # The leading dot allows backpain.clarenhealth.com to share cookies with clarenhealth.com

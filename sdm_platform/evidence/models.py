@@ -24,7 +24,7 @@ class Document(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     file = models.FileField(upload_to="documents/")
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, blank=True, default="")
     content_type = models.CharField(max_length=100, blank=True, default="")
 
     text_content = models.TextField(blank=True, default="")

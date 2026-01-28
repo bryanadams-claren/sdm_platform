@@ -1,0 +1,53 @@
+{% extends "admin/base_site.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  Bulk Upload Documents
+{% endblock title %}
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    › <a href="{% url 'admin:evidence_document_changelist' %}">Documents</a>
+    › Bulk Upload
+  </div>
+{% endblock breadcrumbs %}
+{% block extrahead %}
+  {{ block.super }}
+  {{ form.media }}
+{% endblock extrahead %}
+{% block content %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% if form.errors %}<p class="errornote">Please correct the errors below.</p>{% endif %}
+    <fieldset class="module aligned">
+      <h2>Bulk Upload Documents</h2>
+      <p class="help">
+        Select multiple files to upload. Each file will be created as a separate document, with the filename used as the document name.
+      </p>
+      <div class="form-row">
+        <label for="id_files">Files:</label>
+        <input type="file" name="files" id="id_files" multiple required />
+        {% if form.files.errors %}
+          <ul class="errorlist">
+            {% for error in form.files.errors %}<li>{{ error }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+      <div class="form-row">
+        {{ form.journeys.label_tag }}
+        {{ form.journeys }}
+        <p class="help">{{ form.journeys.help_text }}</p>
+        {% if form.journeys.errors %}
+          <ul class="errorlist">
+            {% for error in form.journeys.errors %}<li>{{ error }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    </fieldset>
+    <div class="submit-row">
+      <input type="submit" value="Upload Documents" class="default" />
+      <a href="{% url 'admin:evidence_document_changelist' %}">Cancel</a>
+    </div>
+  </form>
+{% endblock content %}

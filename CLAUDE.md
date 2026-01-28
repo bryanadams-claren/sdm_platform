@@ -31,3 +31,4 @@
    - Run tests with: `uv run python manage.py test <test_path>`
    - Always run tests after making changes to verify nothing broke
    - Write tests for new features and update tests when making changes
+   - You have access to the Chrome DevTools MCP extension to open a browser and test the application
